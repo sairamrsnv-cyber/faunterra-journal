@@ -1,3 +1,5 @@
 name = "faunterra-journal"
-pages_build_output_dir = "out"
 compatibility_date = "2024-09-23"
+
+[assets]
+directory = "out"
