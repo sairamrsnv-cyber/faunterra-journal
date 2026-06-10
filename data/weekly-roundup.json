@@ -1,0 +1,35 @@
+{
+  "lastGenerated": "2025-06-08T06:00:00Z",
+  "roundups": [
+    {
+      "id": "r-001",
+      "weekEnding": "2025-06-08T00:00:00Z",
+      "headline": "A Week of Quiet Victories",
+      "subheading": "Tigers, dolphins, and dormant coral — nature's resilience in seven days.",
+      "body": "This week's conservation record belongs not to dramatic interventions, but to quiet persistences. India's Gangetic dolphin surveys returned numbers that nobody quite expected — a 34% increase in sightings along river reaches where water quality has measurably improved. The dolphins did not recover because of a single programme. They recovered because pollution decreased, and they did what they have always known how to do: survive.\n\nIn the Nilgiris, SholaRevival's early season monitoring confirmed native understory regeneration across 68% of restored sites — a number that means little in isolation but represents, in practice, hundreds of individual plants taking root in soil that was bare grassland eighteen months ago. Each one a small renegotiation between ecology and time.\n\nAt Kuno, the cheetahs — India's most watched animals — have made independent kills. It is a behavioural milestone, modest on paper, significant in meaning. These animals are beginning to become wild again.\n\nAnd in Lakshadweep, researchers identified 34 coral colonies that survived three bleaching events without mortality. Thirty-four colonies whose genetics carry something like hope — a molecular instruction for resilience that scientists are now working to propagate.\n\nThe week's conservation record is one of accumulation: small signs, patient systems, and species doing what evolution prepared them for — if given the space to do it.",
+      "highlights": [
+        {
+          "title": "Gangetic Dolphin Recovery",
+          "description": "34% increase in sightings in cleaned Ganga stretches — direct evidence that river restoration works.",
+          "category": "Species Recovery"
+        },
+        {
+          "title": "Shola Forest Regeneration",
+          "description": "Native understory confirmed in 68% of SholaRevival restoration sites in the Nilgiri Biosphere Reserve.",
+          "category": "Restoration"
+        },
+        {
+          "title": "Cheetah Establishment at Kuno",
+          "description": "Three adult individuals confirm stable home ranges and independent prey capture — a rewilding milestone.",
+          "category": "Rewilding"
+        },
+        {
+          "title": "Heat-Tolerant Coral Identified",
+          "description": "34 survivor colonies in Lakshadweep provide genetic foundation for reef restoration under climate stress.",
+          "category": "Marine Science"
+        }
+      ],
+      "publishedAt": "2025-06-08T08:00:00Z"
+    }
+  ]
+}

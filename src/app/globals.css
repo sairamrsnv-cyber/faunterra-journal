@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+/* ── Base reset ── */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: #F5F1E8;
+  color: #2D3B2F;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: #A68A64; color: #F5F1E8; }
+
+/* ── Utility classes ── */
+.label {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: #A68A64;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Article card hover ── */
+.article-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.article-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 52px rgba(45, 59, 47, 0.1);
+}
+
+/* ── Category pills ── */
+.cat-pill {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.cat-pill.active {
+  background: #2D3B2F;
+  color: #F5F1E8;
+}
+.cat-pill:not(.active) {
+  background: transparent;
+  color: #6B705C;
+  border: 1px solid rgba(107, 112, 92, 0.3);
+}
+.cat-pill:not(.active):hover {
+  border-color: #2D3B2F;
+  color: #2D3B2F;
+}
+
+/* ── Conservation Win badge ── */
+.win-badge {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  background: rgba(166, 138, 100, 0.12);
+  color: #A68A64;
+  border: 1px solid rgba(166, 138, 100, 0.28);
+}
+
+/* ── Source tag ── */
+.source-tag {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #6B705C;
+}
+
+/* ── Unified dark card placeholder (no image) ── */
+.bg-card-dark {
+  background: #1C2B1E;
+}

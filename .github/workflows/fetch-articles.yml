@@ -1,0 +1,54 @@
+name: 🌿 Fetch Conservation Articles
+
+on:
+  schedule:
+    - cron: '0 0,6,12,18 * * *'   # Every 6 hours
+    - cron: '0 8 * * 0'            # Sunday 8am UTC — weekly roundup
+  workflow_dispatch:                # Manual trigger from GitHub UI
+    inputs:
+      roundup_only:
+        description: 'Generate weekly roundup only (skip fetching)'
+        type: boolean
+        default: false
+
+jobs:
+  curate:
+    name: Curate & publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run curation engine
+        run: |
+          if [ "${{ github.event.inputs.roundup_only }}" = "true" ]; then
+            node scripts/automate.mjs --roundup
+          else
+            node scripts/automate.mjs
+          fi
+
+      - name: Commit updated data files
+        run: |
+          git config --local user.email "journal-bot@faunterra.com"
+          git config --local user.name "Faunterra Journal Bot"
+          git add data/curated-articles.json data/weekly-roundup.json
+          git diff --staged --quiet || git commit -m "📰 Auto: Conservation curation — $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
+
+      - name: Trigger Cloudflare Pages deploy
+        if: success()
+        run: echo "Data updated — Cloudflare Pages will auto-deploy from the new commit."
