@@ -34,6 +34,9 @@
 
 import fs   from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const API_BASE           = 'https://api.ebird.org/v2';
 const REQUEST_TIMEOUT_MS = 20000;
@@ -41,6 +44,41 @@ const MAX_RESULTS        = 10000;
 // Politeness gap between requests. The docs ask for restraint and give no
 // published rate number, so we pick a conservative one rather than guess.
 const THROTTLE_MS        = 1100;
+
+// ── Env file ──────────────────────────────────────────────────
+// Loads .env.local from the repo root so the API token lives in one
+// gitignored file rather than being baked into a launchd plist or shell
+// history. Values already present in the environment win, so an explicit
+// `EBIRD_REGIONS=X npm run ...` still overrides the file.
+export function parseEnvFile(text) {
+  const out = {};
+  for (const line of text.split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const eq = t.indexOf('=');
+    if (eq === -1) continue;
+    const key = t.slice(0, eq).trim().replace(/^export\s+/, '');
+    if (!key) continue;
+    let val = t.slice(eq + 1).trim();
+    // Strip one matching pair of surrounding quotes, if present.
+    if (val.length >= 2 && (val[0] === '"' || val[0] === "'") && val.at(-1) === val[0]) {
+      val = val.slice(1, -1);
+    }
+    out[key] = val;
+  }
+  return out;
+}
+
+export function loadEnvFile(file = path.join(REPO_ROOT, '.env.local'), env = process.env) {
+  let text;
+  try { text = fs.readFileSync(file, 'utf-8'); } catch { return { loaded: false, keys: [] }; }
+  const parsed = parseEnvFile(text);
+  const keys = [];
+  for (const [k, v] of Object.entries(parsed)) {
+    if (env[k] === undefined || env[k] === '') { env[k] = v; keys.push(k); }
+  }
+  return { loaded: true, keys, file };
+}
 
 // ── CLI ───────────────────────────────────────────────────────
 function parseArgs(argv) {
@@ -147,6 +185,7 @@ async function ebirdGet(pathname, token, params = {}) {
 // ── Main ──────────────────────────────────────────────────────
 async function main() {
   const args  = parseArgs(process.argv.slice(2));
+  const env   = loadEnvFile();
   const token = process.env.EBIRD_API_TOKEN?.trim();
   const regions = (process.env.EBIRD_REGIONS || 'IN')
     .split(',').map(r => r.trim()).filter(Boolean);
@@ -169,6 +208,9 @@ async function main() {
   }
 
   console.log('\n  eBird archive puller');
+  if (env.loaded && env.keys.length) {
+    console.log(`  env     : ${env.keys.join(', ')} from .env.local`);
+  }
   console.log(`  archive : ${archive.dir}${archive.guarded ? '  (external volume, verified mounted)' : ''}`);
   console.log(`  regions : ${regions.join(', ')}`);
   console.log(`  window  : ${args.days} day(s) back from today (UTC)`);

@@ -14,6 +14,8 @@ import os   from 'os';
 import path from 'path';
 import { resolveArchiveDir, targetDates, sanitize } from './ebird-pull.mjs';
 import { csvCell, toCsv, loadArchive, analyze }     from './ebird-analyze.mjs';
+import { parseEnvFile, loadEnvFile }               from './ebird-pull.mjs';
+import { xmlEscape, buildPlist, runChecks, LABEL } from './ebird-schedule.mjs';
 
 let pass = 0, fail = 0;
 const check = (name, cond) => {
@@ -166,6 +168,88 @@ check('empty archive dir returns empty, does not throw',
   loadArchive(path.join(tmp, 'does-not-exist')).observations.length === 0);
 
 fs.rmSync(tmp, { recursive: true, force: true });
+
+console.log('\n  Env file parsing');
+const envText = [
+  '# a comment',
+  '',
+  'EBIRD_API_TOKEN=abc123',
+  'export EBIRD_REGIONS=IN-KA,IN-TN',
+  'QUOTED="has spaces"',
+  "SINGLE='also quoted'",
+  'WITH_EQUALS=a=b=c',
+  'EMPTY=',
+  '   # indented comment',
+  'no_equals_line',
+].join('\n');
+const env = parseEnvFile(envText);
+check('parses a bare key=value', env.EBIRD_API_TOKEN === 'abc123');
+check('strips an export prefix', env.EBIRD_REGIONS === 'IN-KA,IN-TN');
+check('strips surrounding double quotes', env.QUOTED === 'has spaces');
+check('strips surrounding single quotes', env.SINGLE === 'also quoted');
+check('keeps = inside a value', env.WITH_EQUALS === 'a=b=c');
+check('allows an empty value', env.EMPTY === '');
+check('ignores comments and blank lines', env['# a comment'] === undefined);
+check('ignores a line with no =', env.no_equals_line === undefined);
+
+const envTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ebird-env-'));
+const envFile = path.join(envTmp, '.env.local');
+fs.writeFileSync(envFile, 'FOO=from_file\nBAR=from_file\n');
+const fakeEnv = { BAR: 'from_shell' };
+const res = loadEnvFile(envFile, fakeEnv);
+check('loads values that are unset', fakeEnv.FOO === 'from_file');
+check('does NOT override a value already in the environment', fakeEnv.BAR === 'from_shell');
+check('reports which keys it set', res.keys.includes('FOO') && !res.keys.includes('BAR'));
+check('missing env file is not an error',
+  loadEnvFile(path.join(envTmp, 'nope'), {}).loaded === false);
+fs.rmSync(envTmp, { recursive: true, force: true });
+
+console.log('\n  Scheduler plist');
+check('xmlEscape handles ampersand', xmlEscape('a & b') === 'a &amp; b');
+check('xmlEscape handles angle brackets', xmlEscape('<x>') === '&lt;x&gt;');
+check('xmlEscape leaves ordinary text alone', xmlEscape('/Users/me/repo') === '/Users/me/repo');
+
+const good = {
+  label: LABEL, nodePath: '/usr/local/bin/node',
+  scriptPath: '/Users/me/repo/scripts/ebird-pull.mjs',
+  workingDir: '/Users/me/repo', days: 3, hour: 9, minute: 0,
+  outLog: '/Users/me/Library/Logs/o.log', errLog: '/Users/me/Library/Logs/e.log',
+};
+const plist = buildPlist(good);
+check('plist declares the label', plist.includes(`<string>${LABEL}</string>`));
+check('plist uses an absolute node path', plist.includes('<string>/usr/local/bin/node</string>'));
+check('plist passes the lookback window', plist.includes('<string>--days</string>') && plist.includes('<string>3</string>'));
+check('plist sets the run time', plist.includes('<key>Hour</key><integer>9</integer>'));
+check('plist does NOT contain an API token',
+  !/EBIRD_API_TOKEN/.test(plist) && !/EnvironmentVariables/.test(plist));
+check('plist does not run at load', plist.includes('<key>RunAtLoad</key>\n  <false/>'));
+
+check('rejects a relative node path',
+  throws(() => buildPlist({ ...good, nodePath: 'node' }), /must be absolute/));
+check('rejects a relative script path',
+  throws(() => buildPlist({ ...good, scriptPath: 'scripts/x.mjs' }), /must be absolute/));
+check('rejects an out-of-range hour',
+  throws(() => buildPlist({ ...good, hour: 24 }), /hour out of range/));
+check('rejects a negative minute',
+  throws(() => buildPlist({ ...good, minute: -1 }), /minute out of range/));
+check('rejects days beyond the API window',
+  throws(() => buildPlist({ ...good, days: 31 }), /days out of range/));
+check('rejects a non-integer hour',
+  throws(() => buildPlist({ ...good, hour: 9.5 }), /hour out of range/));
+
+const escaped = buildPlist({ ...good, workingDir: '/Users/me/R&D/repo' });
+check('escapes an ampersand in a path', escaped.includes('/Users/me/R&amp;D/repo'));
+
+console.log('\n  Scheduler preflight');
+const checksNoEnv = runChecks({ env: {}, existsSync: () => false });
+check('preflight flags a missing .env.local',
+  checksNoEnv.find(c => c.label === '.env.local present')?.ok === false);
+check('preflight flags a token that is not in the file',
+  checksNoEnv.find(c => c.label === 'EBIRD_API_TOKEN in .env.local')?.ok === false);
+check('preflight reports the platform honestly',
+  checksNoEnv.find(c => c.label === 'platform is macOS')?.ok === (process.platform === 'darwin'));
+check('preflight mutates nothing (returns plain data)',
+  Array.isArray(checksNoEnv) && checksNoEnv.every(c => typeof c.ok === 'boolean'));
 
 console.log(`\n  ${pass} passed, ${fail} failed\n`);
 process.exit(fail === 0 ? 0 : 1);

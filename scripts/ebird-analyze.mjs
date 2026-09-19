@@ -25,7 +25,7 @@
 
 import fs   from 'fs';
 import path from 'path';
-import { resolveArchiveDir } from './ebird-pull.mjs';
+import { resolveArchiveDir, loadEnvFile } from './ebird-pull.mjs';
 
 // ── CSV writing. Quote everything that could break a cell. ────
 export function csvCell(v) {
@@ -190,6 +190,8 @@ function main() {
   const outDir = outIdx !== -1 && argv[outIdx + 1]
     ? argv[outIdx + 1]
     : path.join(process.cwd(), 'ebird-analysis');
+
+  loadEnvFile();
 
   let archive;
   try {

@@ -40,7 +40,8 @@ faunterra-journal/
 │   ├── automate.mjs        ← Core automation engine
 │   ├── ebird.mjs           ← eBird client for the site's signal digest
 │   ├── ebird-pull.mjs      ← Local archive builder (daily accumulation)
-│   └── ebird-analyze.mjs   ← Local analysis → CSV for pandas / R
+│   ├── ebird-analyze.mjs   ← Local analysis → CSV for pandas / R
+│   └── ebird-schedule.mjs  ← Installs the daily pull as a launchd job
 └── package.json
 ```
 
@@ -211,10 +212,21 @@ retroactively. Skip a month and that month is gone.
 ### Setup
 
 ```bash
-export EBIRD_API_TOKEN=your_key          # https://ebird.org/api/keygen
-export EBIRD_REGIONS=IN-KA,IN-TN         # comma-separated region codes
-export EBIRD_ARCHIVE_DIR=/Volumes/LaCie/faunterra/ebird-archive
+cp .env.local.example .env.local
+chmod 600 .env.local
 ```
+
+Then fill it in:
+
+```sh
+EBIRD_API_TOKEN=your_key                 # https://ebird.org/api/keygen
+EBIRD_REGIONS=IN-KA,IN-TN                # comma-separated region codes
+EBIRD_ARCHIVE_DIR=/Volumes/LaCie/faunterra/ebird-archive
+```
+
+`.env.local` is gitignored and is the only place the token needs to live — the
+scheduled job reads it from there rather than carrying it in a plist. Shell
+environment variables still override the file for a single run.
 
 `EBIRD_ARCHIVE_DIR` defaults to `./ebird-archive` when unset. Both the archive
 and the analysis output are gitignored — see the note on redistribution below.
@@ -239,7 +251,12 @@ npm run ebird:pull -- --days 30      # backfill the whole available window
 npm run ebird:pull -- --dry-run      # plan the requests, send none
 npm run ebird:analyze                # analyse the archive → ./ebird-analysis
 npm run ebird:analyze -- --out /Volumes/LaCie/faunterra/analysis
+npm run ebird:schedule -- --check    # validate the daily job setup
 ```
+
+Settings come from `.env.local` (copy `.env.local.example`), so you do not have
+to export anything before each run. Values already in your environment win, so
+`EBIRD_REGIONS=IN-TN npm run ebird:pull` still overrides the file for one run.
 
 The puller is **idempotent**: a day already on disk is skipped without spending
 a request, so re-running it daily costs one request per region per new day.
@@ -251,42 +268,47 @@ rows came back versus how many distinct species — which is how you find out
 whether the endpoint gives you every observation or collapses to one row per
 species. Calibrate on the real response before planning a 30-day backfill.
 
-### Scheduling on macOS
+### Scheduling the daily pull
 
-Use **launchd**, not cron. A laptop is usually asleep at 3am; cron silently
-skips the run, launchd catches up on wake.
-
-`~/Library/LaunchAgents/com.faunterra.ebird.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-  <key>Label</key><string>com.faunterra.ebird</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/usr/local/bin/node</string>
-    <string>/PATH/TO/REPO/scripts/ebird-pull.mjs</string>
-    <string>--days</string><string>3</string>
-  </array>
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>EBIRD_API_TOKEN</key><string>YOUR_KEY</string>
-    <key>EBIRD_REGIONS</key><string>IN-KA,IN-TN</string>
-    <key>EBIRD_ARCHIVE_DIR</key><string>/Volumes/LaCie/faunterra/ebird-archive</string>
-  </dict>
-  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>9</integer></dict>
-  <key>StandardErrorPath</key><string>/tmp/faunterra-ebird.err</string>
-</dict></plist>
-```
+Use **launchd**, not cron. A laptop is asleep at 3am: cron silently skips the
+run and that day is lost permanently, because the API window does not wait.
+launchd runs a missed job when the machine next wakes.
 
 ```bash
-launchctl load ~/Library/LaunchAgents/com.faunterra.ebird.plist
+cp .env.local.example .env.local && chmod 600 .env.local   # add your token
+npm run ebird:schedule -- --check       # validate, change nothing
+npm run ebird:schedule -- --print       # show the job, write nothing
+npm run ebird:schedule -- --install     # write + load the agent
+npm run ebird:schedule -- --status      # loaded? last run? recent log lines
+npm run ebird:schedule -- --uninstall
 ```
 
-`--days 3` gives a three-day overlap, so a couple of missed runs self-heal at
-no extra cost — already-archived days are skipped.
+Defaults to 09:00 local with `--days 3`. Override with `--hour`, `--minute`,
+`--days`. The three-day overlap means a couple of missed runs self-heal at no
+extra cost, since already-archived days are skipped.
+
+`--install` refuses to proceed if preflight fails, rather than installing a job
+that will quietly fail every morning at nine.
+
+**The token is not in the plist.** `~/Library/LaunchAgents/*.plist` is an
+ordinary file in your home directory and ends up in backups. The job reads
+`.env.local` from the repo root instead — gitignored, and preflight warns if it
+is group- or world-readable.
+
+**The scheduled job does not inherit your shell.** A token you only ever
+`export`ed in a terminal will pass an interactive test and fail at 9am, so
+preflight checks for it in the file specifically, not in the environment.
+
+Verify it works without waiting a day:
+
+```bash
+launchctl kickstart -k gui/$(id -u)/com.faunterra.ebird
+npm run ebird:schedule -- --status
+```
+
+On Linux, `--print` emits the equivalent cron line and the systemd `OnCalendar`
+setting (with `Persistent=true`, systemd's equivalent of catching up a missed
+run). `--install` is macOS-only and says so rather than half-working.
 
 ### Analysis output
 
