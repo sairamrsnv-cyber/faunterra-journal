@@ -9,7 +9,10 @@
     "start": "next start",
     "automate": "node scripts/automate.mjs",
     "roundup": "node scripts/automate.mjs --roundup",
-    "test:ebird": "node scripts/ebird.test.mjs"
+    "test:ebird": "node scripts/ebird.test.mjs && node scripts/ebird-pull.test.mjs",
+    "ebird:pull": "node scripts/ebird-pull.mjs",
+    "ebird:probe": "node scripts/ebird-pull.mjs --probe",
+    "ebird:analyze": "node scripts/ebird-analyze.mjs"
   },
   "dependencies": {
     "next": "^14.2.0",

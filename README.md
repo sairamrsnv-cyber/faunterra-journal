@@ -37,8 +37,10 @@ faunterra-journal/
 │   ├── ebird-signals.json       ← Auto-populated from the eBird API
 │   └── weekly-roundup.json      ← Auto-generated Sundays
 ├── scripts/
-│   ├── automate.mjs   ← Core automation engine
-│   └── ebird.mjs      ← eBird API client + signal digest
+│   ├── automate.mjs        ← Core automation engine
+│   ├── ebird.mjs           ← eBird client for the site's signal digest
+│   ├── ebird-pull.mjs      ← Local archive builder (daily accumulation)
+│   └── ebird-analyze.mjs   ← Local analysis → CSV for pandas / R
 └── package.json
 ```
 
@@ -193,6 +195,144 @@ Consume it from the site via `getBirdSignals()` and `getNotableSightings()` in
 
 ---
 
+## Local Data Archive & Analysis
+
+Separate from the website pipeline. This builds a **local** eBird dataset for
+your own analysis — it never touches `data/` and nothing here is published.
+
+### Why this has to run daily
+
+The eBird API serves a rolling **~30-day window**. Anything older is not
+retrievable through the API at any price; you would have to request the eBird
+Basic Dataset instead. So `ebird-pull.mjs` is an *archive builder*, not a
+fetcher. Run it daily and you accumulate a time series the API cannot give you
+retroactively. Skip a month and that month is gone.
+
+### Setup
+
+```bash
+export EBIRD_API_TOKEN=your_key          # https://ebird.org/api/keygen
+export EBIRD_REGIONS=IN-KA,IN-TN         # comma-separated region codes
+export EBIRD_ARCHIVE_DIR=/Volumes/LaCie/faunterra/ebird-archive
+```
+
+`EBIRD_ARCHIVE_DIR` defaults to `./ebird-archive` when unset. Both the archive
+and the analysis output are gitignored — see the note on redistribution below.
+
+### External drive safety
+
+If `EBIRD_ARCHIVE_DIR` points under `/Volumes` (macOS) or `/mnt` `/media`
+(Linux), the scripts verify the volume is **actually mounted** before writing,
+by checking that it sits on a different device than its parent.
+
+This is not paranoia. With the drive unplugged, macOS lets you create
+`/Volumes/LaCie` as an ordinary folder on the boot disk, and you would silently
+fill internal storage for weeks without noticing. Both scripts refuse and exit
+non-zero instead — so a scheduled job reports the failure rather than hiding it.
+
+### Commands
+
+```bash
+npm run ebird:probe                  # 1 request — reports what the API returned
+npm run ebird:pull                   # yesterday
+npm run ebird:pull -- --days 30      # backfill the whole available window
+npm run ebird:pull -- --dry-run      # plan the requests, send none
+npm run ebird:analyze                # analyse the archive → ./ebird-analysis
+npm run ebird:analyze -- --out /Volumes/LaCie/faunterra/analysis
+```
+
+The puller is **idempotent**: a day already on disk is skipped without spending
+a request, so re-running it daily costs one request per region per new day.
+Writes are atomic (temp file + rename), so an interrupted pull cannot leave a
+half-written day that later gets skipped as "already archived".
+
+Start with `ebird:probe`. It spends exactly one request and tells you how many
+rows came back versus how many distinct species — which is how you find out
+whether the endpoint gives you every observation or collapses to one row per
+species. Calibrate on the real response before planning a 30-day backfill.
+
+### Scheduling on macOS
+
+Use **launchd**, not cron. A laptop is usually asleep at 3am; cron silently
+skips the run, launchd catches up on wake.
+
+`~/Library/LaunchAgents/com.faunterra.ebird.plist`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.faunterra.ebird</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/node</string>
+    <string>/PATH/TO/REPO/scripts/ebird-pull.mjs</string>
+    <string>--days</string><string>3</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>EBIRD_API_TOKEN</key><string>YOUR_KEY</string>
+    <key>EBIRD_REGIONS</key><string>IN-KA,IN-TN</string>
+    <key>EBIRD_ARCHIVE_DIR</key><string>/Volumes/LaCie/faunterra/ebird-archive</string>
+  </dict>
+  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>9</integer></dict>
+  <key>StandardErrorPath</key><string>/tmp/faunterra-ebird.err</string>
+</dict></plist>
+```
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.faunterra.ebird.plist
+```
+
+`--days 3` gives a three-day overlap, so a couple of missed runs self-heal at
+no extra cost — already-archived days are skipped.
+
+### Analysis output
+
+`ebird:analyze` prints a terminal report and writes tidy CSVs:
+
+| File | Grain |
+|---|---|
+| `observations.csv` | one row per observation — the one to load into pandas/R |
+| `species-summary.csv` | one row per species (reports, locations, first/last seen) |
+| `daily-summary.csv` | one row per region-day |
+| `locations.csv` | one row per location, ranked by species richness |
+| `accumulation.csv` | cumulative distinct species by date |
+| `summary.json` | totals and date range, machine-readable |
+
+```python
+import pandas as pd
+df = pd.read_csv('ebird-analysis/observations.csv', parse_dates=['date'])
+df.groupby('comName').size().sort_values(ascending=False).head(20)
+```
+
+```r
+library(readr); library(dplyr)
+obs <- read_csv("ebird-analysis/observations.csv")
+obs |> count(comName, sort = TRUE)
+```
+
+### Read this before you draw a conclusion
+
+These are **descriptive counts, not ecological inference**. Raw eBird counts
+confound *more birds* with *more birders* — a species trending upward may just
+mean the weekend was nice. Effort correction needs the duration, distance,
+protocol and observer-count variables, which live in the **eBird Basic Dataset**,
+not the API. For population trends or occupancy modelling, request the EBD and
+use [`auk`](https://cran.r-project.org/package=auk).
+
+Treat what comes out of here as **reporting leads**, not results.
+
+### Terms
+
+Aggregated analytical results are shareable; the raw database is not. The
+archive and analysis directories are gitignored for exactly that reason — a
+public repo is republishing. Credit the Cornell Lab of Ornithology and eBird on
+anything public, and keep your API token out of the repo.
+
+---
+
 ## Content Policy
 
 **We publish:**
@@ -233,9 +373,26 @@ Edit the `SOURCES` array in `scripts/automate.mjs`
 
 ## Environment Variables
 
+### Website pipeline (GitHub Actions)
+
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Yes | Your Anthropic API key |
+| `EBIRD_API_TOKEN` | No | eBird API key. Absent, the eBird pass logs a skip and RSS curation continues. |
+| `EBIRD_REGIONS` | No | Comma-separated eBird region codes. Defaults to `IN`. |
+
+### Local archive & analysis
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `EBIRD_API_TOKEN` | Yes | Required by `ebird:pull`; it exits non-zero without one. |
+| `EBIRD_REGIONS` | No | Comma-separated region codes. Defaults to `IN`. |
+| `EBIRD_ARCHIVE_DIR` | No | Archive location. Defaults to `./ebird-archive`. Verified as mounted if it points at an external volume. |
+
+> **Note:** `ANTHROPIC_API_KEY` was previously listed here as required. The
+> curation engine does not read it — `scripts/automate.mjs` reads no environment
+> variables at all and runs on keyword scoring plus AFINN sentiment, as its own
+> header states. The "Built With" and "Estimated Costs" sections below still
+> describe an LLM-backed pipeline that the code does not currently implement.
 
 ---
 
