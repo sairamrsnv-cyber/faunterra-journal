@@ -34,9 +34,11 @@ faunterra-journal/
 ├── data/
 │   ├── faunterra-articles.json  ← Your own articles (edit manually)
 │   ├── curated-articles.json    ← Auto-populated by GitHub Actions
+│   ├── ebird-signals.json       ← Auto-populated from the eBird API
 │   └── weekly-roundup.json      ← Auto-generated Sundays
 ├── scripts/
-│   └── automate.mjs   ← Core automation engine
+│   ├── automate.mjs   ← Core automation engine
+│   └── ebird.mjs      ← eBird API client + signal digest
 └── package.json
 ```
 
@@ -71,7 +73,34 @@ echo "ANTHROPIC_API_KEY=sk-ant-..." > .env.local
 npm run automate
 ```
 
-### 4. Deploy to Cloudflare Pages
+### 4. Add Your eBird API Key (optional)
+
+Pulls live bird observation signals — notable sightings and regional birding
+activity — from the [eBird API 2.0](https://ebird.org/api/keygen), run by the
+Cornell Lab of Ornithology. The key is free; you just need an eBird account.
+
+1. Get a key at **https://ebird.org/api/keygen**
+2. Repo → **Settings → Secrets → Actions** → add `EBIRD_API_TOKEN`
+3. Optionally, repo → **Settings → Variables → Actions** → add `EBIRD_REGIONS`
+   as a comma-separated list of [eBird region codes](https://ebird.org/region/world)
+   (e.g. `IN,IN-KA,IN-TN`). Defaults to `IN`.
+
+Local testing:
+```bash
+EBIRD_API_TOKEN=your_key EBIRD_REGIONS=IN,IN-KA node scripts/ebird.mjs
+```
+
+**Without a key the pipeline still runs** — the eBird pass logs a skip and the
+RSS curation continues untouched.
+
+**Before you rely on this commercially**, read the
+[eBird API Terms of Use](https://www.birds.cornell.edu/home/ebird-api-terms-of-use/).
+The eBird API and eBird Status & Trends are different products under different
+terms, and Status & Trends restricts commercial use without written permission
+from the Cornell Lab. Attribution to eBird is required wherever the data appears —
+`data/ebird-signals.json` carries an `attribution` string for exactly this; render it.
+
+### 5. Deploy to Cloudflare Pages
 
 1. Push repo to GitHub
 2. Go to **Cloudflare Pages** → Create a project
@@ -84,7 +113,7 @@ npm run automate
 
 Cloudflare Pages auto-deploys every time GitHub Actions commits updated data.
 
-### 5. Add Your Own Faunterra Stories
+### 6. Add Your Own Faunterra Stories
 
 Edit `data/faunterra-articles.json` directly. Follow the existing article format:
 
@@ -116,7 +145,7 @@ Set `"featured": true` on ONE article to display it as the large hero card.
 ### Schedule
 | When | What |
 |------|------|
-| Every 6 hours (00:00, 06:00, 12:00, 18:00 UTC) | Fetch + filter + summarise new articles |
+| Every 6 hours (00:00, 06:00, 12:00, 18:00 UTC) | Fetch + filter + summarise new articles; pull eBird field signals |
 | Every Sunday 08:00 UTC | Generate weekly editorial roundup |
 | Manual trigger | Via GitHub Actions → Run workflow |
 
@@ -139,6 +168,28 @@ Set `"featured": true` on ONE article to display it as the large hero card.
 - Sanctuary Nature Foundation
 
 To add more sources, edit the `SOURCES` array in `scripts/automate.mjs`.
+
+### Live Field Signals (eBird)
+
+Alongside the RSS sources, the engine pulls from the eBird API — *what nature was
+observed doing*, rather than what was written about it. Two requests per region
+per run, deliberately: the eBird docs ask callers to use the API with restraint.
+
+Per region it collects:
+- **Notable sightings** — locally or nationally rare species reported in the last
+  14 days, deduplicated by species and ranked with confirmed records first
+- **Activity stats** — checklists, contributors and species counts for the most
+  recent complete day
+
+Two things it deliberately does *not* do:
+- **No observer names.** The API returns `userDisplayName`; we drop it. Birders
+  submitted checklists to eBird, not to a third-party journal.
+- **No asserting unconfirmed rarities.** Each sighting carries `confirmed` and
+  `reviewed` flags. A rare-bird report that has not cleared eBird's regional
+  review is a claim, not a fact — render it as "reported", not as established.
+
+Consume it from the site via `getBirdSignals()` and `getNotableSightings()` in
+`src/lib/data.ts`.
 
 ---
 

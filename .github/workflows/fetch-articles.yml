@@ -33,7 +33,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test eBird digest logic
+        run: npm run test:ebird
+
       - name: Run curation engine
+        env:
+          # Free key: https://ebird.org/api/keygen — add as a repo secret.
+          # Absent, the eBird pass logs a skip and the RSS run continues.
+          EBIRD_API_TOKEN: ${{ secrets.EBIRD_API_TOKEN }}
+          # Comma-separated eBird region codes. Defaults to IN when unset.
+          EBIRD_REGIONS: ${{ vars.EBIRD_REGIONS }}
         run: |
           if [ "${{ github.event.inputs.roundup_only }}" = "true" ]; then
             node scripts/automate.mjs --roundup
@@ -46,6 +55,9 @@ jobs:
           git config --local user.email "journal-bot@faunterra.com"
           git config --local user.name "Faunterra Journal Bot"
           git add data/curated-articles.json data/weekly-roundup.json
+          # Only present once an eBird key is configured — guard so the
+          # step does not fail on a missing pathspec.
+          if [ -f data/ebird-signals.json ]; then git add data/ebird-signals.json; fi
           git diff --staged --quiet || git commit -m "📰 Auto: Conservation curation — $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
 

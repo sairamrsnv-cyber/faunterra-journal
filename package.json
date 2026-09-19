@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "automate": "node scripts/automate.mjs",
-    "roundup": "node scripts/automate.mjs --roundup"
+    "roundup": "node scripts/automate.mjs --roundup",
+    "test:ebird": "node scripts/ebird.test.mjs"
   },
   "dependencies": {
     "next": "^14.2.0",

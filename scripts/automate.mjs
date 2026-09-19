@@ -8,7 +8,8 @@
  * 3. Extract summary from article excerpt (Natural.js sentence tokeniser)
  * 4. Assign "Why This Matters" from per-category editorial templates
  * 5. Save to data/curated-articles.json
- * 6. Sundays: generate structured weekly roundup → data/weekly-roundup.json
+ * 6. Pull live field signals from eBird → data/ebird-signals.json
+ * 7. Sundays: generate structured weekly roundup → data/weekly-roundup.json
  */
 
 import Parser  from 'rss-parser';
@@ -17,6 +18,7 @@ import fs      from 'fs';
 import path    from 'path';
 import crypto  from 'crypto';
 import { fileURLToPath } from 'url';
+import { fetchBirdSignals } from './ebird.mjs';
 
 const { WordTokenizer, PorterStemmer, SentimentAnalyzer, SentenceTokenizer } = natural;
 
@@ -307,7 +309,7 @@ function buildRoundup(articles) {
 
   const HEADLINES = {
     species:      'A Week of Quiet Recoveries',
-    restoration:  'Roots and Returns: This Week's Restoration Record',
+    restoration:  "Roots and Returns: This Week's Restoration Record",
     marine:       'Below the Surface: A Week in Marine Conservation',
     community:    'Ground-Level Progress: Community Conservation This Week',
     technology:   'Field Intelligence: Conservation Technology This Week',
@@ -318,9 +320,9 @@ function buildRoundup(articles) {
 
   const SUBHEADINGS = [
     'Species, habitat, and the patient arithmetic of ecological recovery.',
-    'From field surveys to population milestones — nature's steady account.',
+    "From field surveys to population milestones — nature's steady account.",
     'Restoration, research, and the measured optimism of field conservation.',
-    'What the week's data tells us about the state of the natural world.',
+    "What the week's data tells us about the state of the natural world.",
     'Breeding seasons, survey returns, and the slow work of landscape repair.',
   ];
 
@@ -368,6 +370,26 @@ async function main() {
       console.log(`  Saved ${merged.length} total articles to curated-articles.json`);
     } else {
       console.log('  No new articles this run — data file unchanged');
+    }
+  }
+
+  // ── eBird field signals ───────────────────────────────────
+  // Independent of the RSS pass: RSS tells us what was written about nature,
+  // eBird tells us what nature was observed doing. A failure here is logged
+  // and stepped over — it must not cost us the article run above.
+  if (!ROUNDUP_ONLY) {
+    console.log('\n  eBird field signals\n');
+    try {
+      const signals = await fetchBirdSignals();
+      if (signals) {
+        writeJSON('ebird-signals.json', signals);
+        const totalNotable = signals.regions.reduce((n, r) => n + r.notableCount, 0);
+        console.log(`\n  Saved ${totalNotable} notable species across ${signals.regions.length} region(s)`);
+      } else {
+        console.log('  No eBird signals this run — data file unchanged');
+      }
+    } catch (err) {
+      console.log(`  eBird pass failed (${err.message.slice(0, 60)}) — continuing`);
     }
   }
 
