@@ -82,6 +82,13 @@ Pulls live bird observation signals — notable sightings and regional birding
 activity — from the [eBird API 2.0](https://ebird.org/api/keygen), run by the
 Cornell Lab of Ornithology. The key is free; you just need an eBird account.
 
+> **Use a dedicated Faunterra eBird account for this**, not a personal birding
+> account. eBird suspends API abuse at the *account* level rather than the key
+> level, so a misbehaving job on a personal account can cost you access to your
+> own checklist history. A project account also survives a handover to a
+> teammate, and gives the Cornell Lab a Faunterra identity to correspond with —
+> which matters if commercial permission is ever needed.
+
 1. Get a key at **https://ebird.org/api/keygen**
 2. Repo → **Settings → Secrets → Actions** → add `EBIRD_API_TOKEN`
 3. Optionally, repo → **Settings → Variables → Actions** → add `EBIRD_REGIONS`
