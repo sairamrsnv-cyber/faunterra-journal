@@ -52,13 +52,14 @@ export function getLatestRoundup(): WeeklyRoundup | null {
 
 // ── Combined feed for homepage ────────────────────────────────
 export function getJournalData() {
-  const faunterra  = getFaunterraSrticles();
-  const curated    = getCuratedArticles();
-  const roundup    = getLatestRoundup();
-  const featured   = faunterra.find(a => a.featured) ?? faunterra[0] ?? null;
-  const secondary  = faunterra.filter(a => a !== featured).slice(0, 12);
+  const faunterra    = getFaunterraSrticles();
+  const curated      = getCuratedArticles();
+  const roundup      = getLatestRoundup();
+  const birdSignals  = getBirdSignals();
+  const featured     = faunterra.find(a => a.featured) ?? faunterra[0] ?? null;
+  const secondary    = faunterra.filter(a => a !== featured).slice(0, 12);
 
-  return { featured, secondary, faunterra, curated, roundup };
+  return { featured, secondary, faunterra, curated, roundup, birdSignals };
 }
 
 // ── eBird field signals ───────────────────────────────────────

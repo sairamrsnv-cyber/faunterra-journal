@@ -191,7 +191,22 @@ Two things it deliberately does *not* do:
   `reviewed` flags. A rare-bird report that has not cleared eBird's regional
   review is a claim, not a fact — render it as "reported", not as established.
 
-Consume it from the site via `getBirdSignals()` and `getNotableSightings()` in
+It renders on the homepage as **Section 03 — Field Signals**
+(`src/components/BirdSignals.tsx`): a stat row per region, then a card per
+notable species. Until an eBird key is configured the section shows a
+placeholder rather than collapsing, the same way the other sections handle an
+empty data file.
+
+Two rules in that component are editorial, not cosmetic:
+
+- **An unreviewed rarity is a claim, not a record.** Sightings carry eBird's
+  `confirmed` / `reviewed` flags, and the card prints either `CONFIRMED` or
+  `REPORTED · UNDER REVIEW`. The distinction is a text label, never colour
+  alone — colour disappears for a colourblind reader and in print.
+- **Attribution renders with the data**, as eBird's terms require, from the
+  `attribution` string in the data file.
+
+Also available directly via `getBirdSignals()` and `getNotableSightings()` in
 `src/lib/data.ts`.
 
 ---

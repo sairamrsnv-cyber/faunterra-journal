@@ -1,6 +1,7 @@
 import { getJournalData } from '../lib/data';
 import { ArticleCard, FeaturedCard } from '../components/ArticleCard';
 import { WeeklyRoundupSection } from '../components/WeeklyRoundup';
+import { BirdSignalsSection, BirdSignalsPlaceholder } from '../components/BirdSignals';
 import { format } from 'date-fns';
 
 export const dynamic = 'force-static';
@@ -20,7 +21,7 @@ const CATEGORIES = [
 ];
 
 export default function JournalPage() {
-  const { featured, secondary, curated, roundup } = getJournalData();
+  const { featured, secondary, curated, roundup, birdSignals } = getJournalData();
 
   return (
     <main className="min-h-screen bg-ivory">
@@ -165,7 +166,12 @@ export default function JournalPage() {
         </div>
       </section>
 
-      {/* ── SECTION 3 — WEEKLY ROUNDUP ───────────────────────── */}
+      {/* ── SECTION 3 — LIVE FIELD SIGNALS (eBird) ───────────── */}
+      {birdSignals
+        ? <BirdSignalsSection signals={birdSignals} />
+        : <BirdSignalsPlaceholder />}
+
+      {/* ── SECTION 4 — WEEKLY ROUNDUP ───────────────────────── */}
       {roundup && <WeeklyRoundupSection roundup={roundup} />}
       {!roundup && (
         <section className="py-24 px-6 md:px-12 bg-[#1C2B1E] text-center">
