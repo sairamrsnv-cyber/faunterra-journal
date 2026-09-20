@@ -5,3 +5,13 @@ out/
 .env.local
 .DS_Store
 *.log
+
+# Build artifacts
+tsconfig.tsbuildinfo
+
+# eBird local archive and derived analysis.
+# The archive is raw eBird data: keep it local, never commit it. eBird's terms
+# allow sharing aggregated results but not republishing the raw database — and
+# a public repo is republishing. Point EBIRD_ARCHIVE_DIR at external storage.
+ebird-archive/
+ebird-analysis/

@@ -1,6 +1,9 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import type { Article, ArticleStore, WeeklyRoundup, RoundupStore } from './types';
+import type {
+  Article, ArticleStore, WeeklyRoundup, RoundupStore,
+  BirdSignalStore, BirdObservation,
+} from './types';
 
 const DATA_DIR = join(process.cwd(), 'data');
 
@@ -49,11 +52,37 @@ export function getLatestRoundup(): WeeklyRoundup | null {
 
 // ── Combined feed for homepage ────────────────────────────────
 export function getJournalData() {
-  const faunterra  = getFaunterraSrticles();
-  const curated    = getCuratedArticles();
-  const roundup    = getLatestRoundup();
-  const featured   = faunterra.find(a => a.featured) ?? faunterra[0] ?? null;
-  const secondary  = faunterra.filter(a => a !== featured).slice(0, 12);
+  const faunterra    = getFaunterraSrticles();
+  const curated      = getCuratedArticles();
+  const roundup      = getLatestRoundup();
+  const birdSignals  = getBirdSignals();
+  const featured     = faunterra.find(a => a.featured) ?? faunterra[0] ?? null;
+  const secondary    = faunterra.filter(a => a !== featured).slice(0, 12);
 
-  return { featured, secondary, faunterra, curated, roundup };
+  return { featured, secondary, faunterra, curated, roundup, birdSignals };
+}
+
+// ── eBird field signals ───────────────────────────────────────
+export function getBirdSignals(): BirdSignalStore | null {
+  const store = readJSON<BirdSignalStore | null>('ebird-signals.json', null);
+  if (!store?.regions?.length) return null;
+  return store;
+}
+
+/**
+ * Notable sightings across all regions, best editorial candidates first.
+ * Confirmed records lead — an unreviewed rarity is a claim, and the UI should
+ * say "reported" rather than asserting it.
+ */
+export function getNotableSightings(limit = 12): BirdObservation[] {
+  const store = getBirdSignals();
+  if (!store) return [];
+
+  return store.regions
+    .flatMap(r => r.notable)
+    .sort((a, b) => {
+      if (a.confirmed !== b.confirmed) return a.confirmed ? -1 : 1;
+      return (b.obsDt ?? '').localeCompare(a.obsDt ?? '');
+    })
+    .slice(0, limit);
 }
