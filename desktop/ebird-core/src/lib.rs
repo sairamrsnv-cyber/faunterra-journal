@@ -10,6 +10,7 @@ pub mod archive;
 pub mod client;
 pub mod model;
 pub mod pull;
+pub mod signals;
 
 pub use client::{EbirdClient, DEFAULT_BASE};
 pub use model::{DayFile, Observation, PullEvent};

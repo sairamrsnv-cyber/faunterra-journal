@@ -11,6 +11,10 @@ on:
         type: boolean
         default: false
 
+# Two passes, deliberately separate. RSS tells us what was written about
+# nature; eBird tells us what nature was observed doing. Neither may cost the
+# other: the curation step runs first and its output is committed even when the
+# eBird step is skipped or fails.
 jobs:
   curate:
     name: Curate & publish
@@ -33,16 +37,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Test eBird digest logic
-        run: npm run test:ebird
-
       - name: Run curation engine
-        env:
-          # Free key: https://ebird.org/api/keygen — add as a repo secret.
-          # Absent, the eBird pass logs a skip and the RSS run continues.
-          EBIRD_API_TOKEN: ${{ secrets.EBIRD_API_TOKEN }}
-          # Comma-separated eBird region codes. Defaults to IN when unset.
-          EBIRD_REGIONS: ${{ vars.EBIRD_REGIONS }}
         run: |
           if [ "${{ github.event.inputs.roundup_only }}" = "true" ]; then
             node scripts/automate.mjs --roundup
@@ -50,13 +45,51 @@ jobs:
             node scripts/automate.mjs
           fi
 
+      # Skip the whole Rust toolchain when no key is configured. Until one
+      # exists the digest cannot be produced, and installing a compiler every
+      # six hours to do nothing is not free.
+      - name: Is eBird configured?
+        id: ebird
+        env:
+          TOKEN: ${{ secrets.EBIRD_API_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ] && [ "${{ github.event.inputs.roundup_only }}" != "true" ]; then
+            echo 'configured=yes' >> "$GITHUB_OUTPUT"
+          else
+            echo 'configured=no' >> "$GITHUB_OUTPUT"
+            echo 'No EBIRD_API_TOKEN secret (or roundup-only run) — skipping the digest.'
+          fi
+
+      - name: Setup Rust
+        if: steps.ebird.outputs.configured == 'yes'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        if: steps.ebird.outputs.configured == 'yes'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop
+
+      # One implementation of the eBird contract, shared with the desktop app.
+      # `signals` exits 0 and writes nothing when eBird is unreachable — a bad
+      # morning at Cornell must not fail our build.
+      - name: Fetch eBird field signals
+        if: steps.ebird.outputs.configured == 'yes'
+        env:
+          EBIRD_API_TOKEN: ${{ secrets.EBIRD_API_TOKEN }}
+          # Comma-separated eBird region codes. Defaults to IN when unset.
+          EBIRD_REGIONS: ${{ vars.EBIRD_REGIONS }}
+        run: |
+          cargo build --release --manifest-path desktop/Cargo.toml -p ebird-core --bin signals
+          ./desktop/target/release/signals
+
       - name: Commit updated data files
         run: |
           git config --local user.email "journal-bot@faunterra.com"
           git config --local user.name "Faunterra Journal Bot"
           git add data/curated-articles.json data/weekly-roundup.json
-          # Only present once an eBird key is configured — guard so the
-          # step does not fail on a missing pathspec.
+          # Only present once an eBird key is configured — guard so the step
+          # does not fail on a missing pathspec.
           if [ -f data/ebird-signals.json ]; then git add data/ebird-signals.json; fi
           git diff --staged --quiet || git commit -m "📰 Auto: Conservation curation — $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push

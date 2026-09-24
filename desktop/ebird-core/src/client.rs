@@ -97,6 +97,21 @@ impl EbirdClient {
         )
     }
 
+    /// Unusual species reported in a region over the last `back` days. This is
+    /// the endpoint behind the journal's field-signals section — a short,
+    /// editorial window, not an archive.
+    pub fn notable_url(&self, region: &str, back: u32, max: u32) -> String {
+        format!(
+            "{}/data/obs/{region}/recent/notable?back={back}&detail=full&maxResults={max}",
+            self.base
+        )
+    }
+
+    /// A region's activity for one day: checklists, contributors, species.
+    pub fn stats_url(&self, region: &str, y: i32, m: u32, d: u32) -> String {
+        format!("{}/product/stats/{region}/{y}/{m}/{d}", self.base)
+    }
+
     /// One day, one region. Returns the raw body so the caller can report byte
     /// counts before paying to parse it.
     pub async fn historic(
@@ -106,7 +121,13 @@ impl EbirdClient {
         m: u32,
         d: u32,
     ) -> Result<Fetched, FetchError> {
-        let url = self.historic_url(region, y, m, d);
+        self.get(self.historic_url(region, y, m, d)).await
+    }
+
+    /// Fetch any prepared eBird URL. Every request in this crate goes through
+    /// here, so the timeout, the auth header and the failure taxonomy are
+    /// defined exactly once.
+    pub async fn get(&self, url: String) -> Result<Fetched, FetchError> {
         let started = Instant::now();
 
         let res = self

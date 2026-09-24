@@ -22,3 +22,18 @@ path = "src/bin/pull.rs"
 [[bin]]
 name = "fixture"
 path = "src/bin/fixture.rs"
+
+# The website's field-signals digest. Runs in CI; writes data/ebird-signals.json.
+[[bin]]
+name = "signals"
+path = "src/bin/signals.rs"
+
+# Installs the daily pull as a launchd agent. Carries no secrets.
+[[bin]]
+name = "schedule"
+path = "src/bin/schedule.rs"
+
+# Turns the archive into tidy CSVs for pandas / R. Never writes to the archive.
+[[bin]]
+name = "analyze"
+path = "src/bin/analyze.rs"

@@ -8,8 +8,10 @@
  * 3. Extract summary from article excerpt (Natural.js sentence tokeniser)
  * 4. Assign "Why This Matters" from per-category editorial templates
  * 5. Save to data/curated-articles.json
- * 6. Pull live field signals from eBird → data/ebird-signals.json
- * 7. Sundays: generate structured weekly roundup → data/weekly-roundup.json
+ * 6. Sundays: generate structured weekly roundup → data/weekly-roundup.json
+ *
+ * eBird field signals are NOT produced here. They come from the Rust `signals`
+ * binary in desktop/, which the workflow runs as its own step.
  */
 
 import Parser  from 'rss-parser';
@@ -18,7 +20,6 @@ import fs      from 'fs';
 import path    from 'path';
 import crypto  from 'crypto';
 import { fileURLToPath } from 'url';
-import { fetchBirdSignals } from './ebird.mjs';
 
 const { WordTokenizer, PorterStemmer, SentimentAnalyzer, SentenceTokenizer } = natural;
 
@@ -373,25 +374,9 @@ async function main() {
     }
   }
 
-  // ── eBird field signals ───────────────────────────────────
-  // Independent of the RSS pass: RSS tells us what was written about nature,
-  // eBird tells us what nature was observed doing. A failure here is logged
-  // and stepped over — it must not cost us the article run above.
-  if (!ROUNDUP_ONLY) {
-    console.log('\n  eBird field signals\n');
-    try {
-      const signals = await fetchBirdSignals();
-      if (signals) {
-        writeJSON('ebird-signals.json', signals);
-        const totalNotable = signals.regions.reduce((n, r) => n + r.notableCount, 0);
-        console.log(`\n  Saved ${totalNotable} notable species across ${signals.regions.length} region(s)`);
-      } else {
-        console.log('  No eBird signals this run — data file unchanged');
-      }
-    } catch (err) {
-      console.log(`  eBird pass failed (${err.message.slice(0, 60)}) — continuing`);
-    }
-  }
+  // eBird field signals used to run here. They now come from the Rust
+  // `signals` binary in desktop/, which the workflow invokes as its own step —
+  // one implementation of the eBird contract instead of two that drift.
 
   // ── Weekly roundup ────────────────────────────────────────
   if (IS_SUNDAY || ROUNDUP_ONLY) {

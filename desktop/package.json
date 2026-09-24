@@ -9,8 +9,12 @@
     "icons": "tauri icon src-tauri/icons/icon.png",
     "pull": "cargo run -p ebird-core --bin pull --",
     "probe": "cargo run -p ebird-core --bin pull -- --probe",
+    "signals": "cargo run -p ebird-core --bin signals --",
+    "analyze": "cargo run -p ebird-core --bin analyze --",
+    "schedule": "cargo run -p ebird-core --bin schedule --",
     "fixture": "cargo run -p ebird-core --bin fixture",
-    "check": "cargo test -p ebird-core && cargo clippy -p ebird-core -- -D warnings"
+    "test": "cargo test -p ebird-core",
+    "lint": "cargo clippy -p ebird-core --all-targets -- -D warnings && cargo fmt -p ebird-core -- --check"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"

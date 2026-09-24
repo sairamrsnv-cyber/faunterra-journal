@@ -17,12 +17,27 @@ That single fact drives every design decision below.
 
 ```
 desktop/
-├─ ebird-core/     pure Rust. HTTP, sanitisation, archive writes, rollups.
-│                  No GUI dependency anywhere — compiles, tests and RUNS headless.
+├─ ebird-core/     pure Rust. Everything that touches eBird data.
+│  └─ src/bin/
+│     ├─ pull      builds the local archive, one day at a time
+│     ├─ signals   the website's field-signals digest → data/ebird-signals.json
+│     ├─ analyze   the archive → tidy CSVs for pandas / R
+│     ├─ schedule  installs the daily pull as a launchd agent
+│     └─ fixture   a local stand-in that speaks eBird's response shape
 ├─ src-tauri/      the window. Thin: commands in, events out. Nothing decides
 │                  anything about data here.
 └─ ui/             the interface. One file, no external requests.
 ```
+
+**This is the only eBird implementation in the repository.** The Node scripts
+that used to do this — a digest fetcher, an archive puller, an analyser and a
+scheduler — are gone. They shared the eBird response contract by convention,
+which is a promise nothing enforced; now there is one definition of a sighting
+and one place a field name can be wrong.
+
+`ebird-core` has no GUI dependency anywhere in its tree, so it compiles, tests
+and runs headless — in CI, in a container, over SSH. That is what makes the
+website's digest and the desktop app able to share it.
 
 The split is load-bearing, not tidiness. `ebird-core` can be verified on a
 machine with no display, which means a GUI failure can never be mistaken for a
@@ -36,14 +51,49 @@ npm run dev                 # the window, with hot reload
 npm run build               # a signed-able .app + .dmg in src-tauri/target/release/bundle
 ```
 
-Headless, no window needed:
+Headless, no window needed. Each is a separate binary:
 
 ```bash
-npm run pull -- --days 30   # backfill the whole API window
-npm run pull -- --probe     # one request; report what actually came back
-npm run pull -- --json      # one JSON object per line, timestamped
-npm run pull -- --summary   # archive rollup as JSON
+cargo run -p ebird-core --bin pull -- --days 30   # backfill the whole window
+cargo run -p ebird-core --bin pull -- --probe     # one request; what came back?
+cargo run -p ebird-core --bin pull -- --json      # timestamped event stream
+cargo run -p ebird-core --bin pull -- --summary   # archive rollup as JSON
+
+cargo run -p ebird-core --bin signals             # the website digest
+cargo run -p ebird-core --bin signals -- --stdout # print it, write nothing
+
+cargo run -p ebird-core --bin analyze             # → ./ebird-analysis/*.csv
+cargo run -p ebird-core --bin schedule -- --check # preflight the daily job
 ```
+
+### The daily pull
+
+```bash
+cargo build --release                             # schedule points at ./pull
+cargo run -p ebird-core --bin schedule -- --check
+cargo run -p ebird-core --bin schedule -- --install
+launchctl kickstart -k gui/$(id -u)/com.faunterra.ebird
+```
+
+**launchd, not cron.** cron does not run what it missed: close the lid at 23:00
+and a 09:00 job simply never happened. For an archive whose entire value is
+continuity, against an API that will not sell you back a missed day, that is
+the one failure worth engineering against.
+
+`--install` refuses when preflight fails. An agent that fails silently every
+morning is worse than no agent, because you believe you have an archive.
+
+### The website digest
+
+`signals` replaces what used to be a pass inside the Node curation script. Two
+requests per region — notable sightings over a 14-day window, plus one day of
+activity figures — and that is the whole budget.
+
+It exits 0 and writes nothing when there is no key or eBird is unreachable.
+That is deliberate: a stale page is a small problem, and a build that fails at
+06:00 because a third party had a bad morning is a larger one. It never turns
+an absent figure into a zero, because "no checklists submitted" and "we could
+not ask" are different claims.
 
 ## Configuration
 
@@ -91,7 +141,8 @@ Dataset, not the API. Every summary carries that caveat.
 
 ```bash
 cargo run -p ebird-core --bin fixture 8788 &
-EBIRD_API_BASE=http://127.0.0.1:8788/v2 npm run pull -- --days 4
+EBIRD_API_BASE=http://127.0.0.1:8788/v2 cargo run -p ebird-core --bin pull -- --days 4
+EBIRD_API_BASE=http://127.0.0.1:8788/v2 cargo run -p ebird-core --bin signals -- --stdout
 ```
 
 The fixture speaks eBird's response shape over a real socket. The puller is not
@@ -100,10 +151,26 @@ writes and rollups all run exactly as they do in production. Rows it produces
 are generated, and are marked `"live": false` inside every archive file they
 land in; the window shows a banner the whole time.
 
+It serves all three endpoints the tools use, including the two behind the
+digest, so the publishing path is testable too.
+
 One thing the fixture cannot settle: whether the real endpoint returns every
-observation or collapses to one row per species. The docs do not say. Run
-`npm run pull -- --probe` once against the live API — it spends exactly one
-request and tells you.
+observation or collapses to one row per species. The docs do not say, and the
+answer decides what the archive can ever tell you. Run `pull --probe` once
+against the live API — it spends exactly one request and reports the answer.
+
+### Tests
+
+```bash
+cargo test -p ebird-core      # 28, no network required
+cargo clippy -p ebird-core --all-targets -- -D warnings
+cargo fmt -p ebird-core -- --check
+```
+
+The suite leans toward the failures that are expensive and silent: a name
+surviving to disk, a day written half-way, an unreviewed rarity marked
+confirmed, a headline number that is a property of the display rather than the
+data. CI runs all three on every push.
 
 ## Attribution
 

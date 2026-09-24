@@ -25,7 +25,9 @@ fn arg_flag(name: &str) -> bool {
 
 fn arg_value(name: &str) -> Option<String> {
     let args: Vec<String> = std::env::args().collect();
-    args.iter().position(|a| a == name).and_then(|i| args.get(i + 1).cloned())
+    args.iter()
+        .position(|a| a == name)
+        .and_then(|i| args.get(i + 1).cloned())
 }
 
 fn human_bytes(n: usize) -> String {
@@ -61,40 +63,97 @@ fn stamp() -> String {
 fn print_event(ev: &PullEvent) {
     let t = stamp();
     match ev {
-        PullEvent::Plan { regions, dates, requests, archive, endpoint, live } => {
-            println!("{t}  PLAN   {requests} request(s): {} region(s) x {} day(s)", regions.len(), dates.len());
-            println!("{t}         endpoint  {endpoint}{}", if *live { "" } else { "   [SYNTHETIC — not eBird]" });
+        PullEvent::Plan {
+            regions,
+            dates,
+            requests,
+            archive,
+            endpoint,
+            live,
+        } => {
+            println!(
+                "{t}  PLAN   {requests} request(s): {} region(s) x {} day(s)",
+                regions.len(),
+                dates.len()
+            );
+            println!(
+                "{t}         endpoint  {endpoint}{}",
+                if *live {
+                    ""
+                } else {
+                    "   [SYNTHETIC — not eBird]"
+                }
+            );
             println!("{t}         archive   {archive}");
         }
-        PullEvent::Skip { region, date, reason } => {
+        PullEvent::Skip {
+            region,
+            date,
+            reason,
+        } => {
             println!("{t}  SKIP   {region}  {date}  — {reason}");
         }
-        PullEvent::Request { region, date, method, url, auth } => {
+        PullEvent::Request {
+            region,
+            date,
+            method,
+            url,
+            auth,
+        } => {
             println!("{t}  GET    {region}  {date}");
             println!("{t}         {method} {url}");
             println!("{t}         {auth}");
         }
-        PullEvent::Response { status, bytes, ms, .. } => {
+        PullEvent::Response {
+            status, bytes, ms, ..
+        } => {
             println!("{t}  {status}    {} in {ms} ms", human_bytes(*bytes));
         }
         PullEvent::Parse { rows, species, .. } => {
-            println!("{t}  PARSE  {} rows, {} distinct species", thousands(*rows), species);
+            println!(
+                "{t}  PARSE  {} rows, {} distinct species",
+                thousands(*rows),
+                species
+            );
         }
-        PullEvent::Privacy { fields, occurrences, .. } => {
-            println!("{t}  STRIP  removed {} ({} occurrence(s)) before disk", fields.join(", "), thousands(*occurrences));
+        PullEvent::Privacy {
+            fields,
+            occurrences,
+            ..
+        } => {
+            println!(
+                "{t}  STRIP  removed {} ({} occurrence(s)) before disk",
+                fields.join(", "),
+                thousands(*occurrences)
+            );
         }
         PullEvent::Write { path, bytes, .. } => {
-            println!("{t}  WRITE  {path}  {}  (tmp -> rename, atomic)", human_bytes(*bytes));
+            println!(
+                "{t}  WRITE  {path}  {}  (tmp -> rename, atomic)",
+                human_bytes(*bytes)
+            );
         }
         PullEvent::Throttle { ms, why } => {
             println!("{t}  WAIT   {ms} ms — {why}");
         }
-        PullEvent::Failed { region, date, reason } => {
+        PullEvent::Failed {
+            region,
+            date,
+            reason,
+        } => {
             println!("{t}  FAIL   {region}  {date}  — {reason}");
         }
-        PullEvent::Done { fetched, skipped, failed, rows, ms } => {
+        PullEvent::Done {
+            fetched,
+            skipped,
+            failed,
+            rows,
+            ms,
+        } => {
             println!("{}", "-".repeat(72));
-            println!("{t}  DONE   fetched {fetched}  skipped {skipped}  failed {failed}  in {ms} ms");
+            println!(
+                "{t}  DONE   fetched {fetched}  skipped {skipped}  failed {failed}  in {ms} ms"
+            );
             if *rows > 0 {
                 println!("{t}         {} observations added", thousands(*rows));
             }
@@ -123,7 +182,9 @@ async fn main() -> ExitCode {
 
     if token.trim().is_empty() {
         eprintln!("\n  EBIRD_API_TOKEN is not set.");
-        eprintln!("  Get a free key for a dedicated Faunterra account: https://ebird.org/api/keygen");
+        eprintln!(
+            "  Get a free key for a dedicated Faunterra account: https://ebird.org/api/keygen"
+        );
         eprintln!("  Then put it in .env.local — the scheduled job does not inherit your shell.\n");
         return ExitCode::FAILURE;
     }
@@ -136,7 +197,11 @@ async fn main() -> ExitCode {
         .map(|r| r.trim().to_string())
         .filter(|r| !r.is_empty())
         .collect();
-    let regions = if regions.is_empty() { vec!["IN".to_string()] } else { regions };
+    let regions = if regions.is_empty() {
+        vec!["IN".to_string()]
+    } else {
+        regions
+    };
 
     let default_archive = repo_root.join("ebird-archive");
     let location = match archive::resolve(
@@ -178,7 +243,9 @@ async fn main() -> ExitCode {
             println!("  volume   external, verified mounted");
         }
         if !client.is_live() {
-            println!("  NOTE     talking to a local fixture, not eBird. Rows will be marked synthetic.");
+            println!(
+                "  NOTE     talking to a local fixture, not eBird. Rows will be marked synthetic."
+            );
         }
         println!("{}", "-".repeat(72));
     }
@@ -193,7 +260,8 @@ async fn main() -> ExitCode {
         println!("\n  Probing {} for {iso}\n", regions[0]);
         match client.historic(&regions[0], *y, *m, *d).await {
             Ok(f) => {
-                let rows: Vec<serde_json::Value> = serde_json::from_str(&f.body).unwrap_or_default();
+                let rows: Vec<serde_json::Value> =
+                    serde_json::from_str(&f.body).unwrap_or_default();
                 let species: std::collections::HashSet<&str> = rows
                     .iter()
                     .filter_map(|r| r.get("speciesCode").and_then(|v| v.as_str()))
@@ -203,7 +271,11 @@ async fn main() -> ExitCode {
                 println!("  distinct species {}", species.len());
                 println!(
                     "  rows per species {}",
-                    if species.is_empty() { "n/a".into() } else { format!("{:.2}", rows.len() as f64 / species.len() as f64) }
+                    if species.is_empty() {
+                        "n/a".into()
+                    } else {
+                        format!("{:.2}", rows.len() as f64 / species.len() as f64)
+                    }
                 );
                 println!(
                     "\n  {}",
@@ -214,7 +286,10 @@ async fn main() -> ExitCode {
                     }
                 );
                 if let Some(first) = rows.first().and_then(|r| r.as_object()) {
-                    println!("\n  fields on first row:\n    {}", first.keys().cloned().collect::<Vec<_>>().join(", "));
+                    println!(
+                        "\n  fields on first row:\n    {}",
+                        first.keys().cloned().collect::<Vec<_>>().join(", ")
+                    );
                 }
                 println!();
                 return ExitCode::SUCCESS;
@@ -226,7 +301,11 @@ async fn main() -> ExitCode {
         }
     }
 
-    let req = PullRequest { regions, days, archive_dir: location.dir.clone() };
+    let req = PullRequest {
+        regions,
+        days,
+        archive_dir: location.dir.clone(),
+    };
     let summary = pull::run(&client, &req, |ev| {
         if json_mode {
             // Stamp each line. A machine-readable event stream without a time
@@ -244,8 +323,12 @@ async fn main() -> ExitCode {
 
     if !json_mode {
         if let Ok(s) = analyze::summarize(&location.dir, 10) {
-            println!("\n  Archive now holds {} day(s), {} record(s), {} location(s)",
-                s.days, thousands(s.records), thousands(s.locations));
+            println!(
+                "\n  Archive now holds {} day(s), {} record(s), {} location(s)",
+                s.days,
+                thousands(s.records),
+                thousands(s.locations)
+            );
             if s.any_synthetic {
                 println!("  Contains synthetic rows from the fixture — not eBird data.");
             }

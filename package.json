@@ -7,13 +7,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "typecheck": "tsc --noEmit",
     "automate": "node scripts/automate.mjs",
     "roundup": "node scripts/automate.mjs --roundup",
-    "test:ebird": "node scripts/ebird.test.mjs && node scripts/ebird-pull.test.mjs",
-    "ebird:pull": "node scripts/ebird-pull.mjs",
-    "ebird:probe": "node scripts/ebird-pull.mjs --probe",
-    "ebird:analyze": "node scripts/ebird-analyze.mjs",
-    "ebird:schedule": "node scripts/ebird-schedule.mjs"
+    "ebird": "cargo run --release --manifest-path desktop/Cargo.toml -p ebird-core --bin",
+    "ebird:signals": "cargo run --release --manifest-path desktop/Cargo.toml -p ebird-core --bin signals --",
+    "ebird:pull": "cargo run --release --manifest-path desktop/Cargo.toml -p ebird-core --bin pull --",
+    "ebird:probe": "cargo run --release --manifest-path desktop/Cargo.toml -p ebird-core --bin pull -- --probe",
+    "ebird:schedule": "cargo run --release --manifest-path desktop/Cargo.toml -p ebird-core --bin schedule --",
+    "ebird:test": "cargo test --manifest-path desktop/Cargo.toml -p ebird-core",
+    "app": "npm --prefix desktop run dev",
+    "app:build": "npm --prefix desktop run build"
   },
   "dependencies": {
     "next": "^14.2.0",

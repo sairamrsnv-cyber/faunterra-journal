@@ -37,13 +37,19 @@ faunterra-journal/
 │   ├── ebird-signals.json       ← Auto-populated from the eBird API
 │   └── weekly-roundup.json      ← Auto-generated Sundays
 ├── scripts/
-│   ├── automate.mjs        ← Core automation engine
-│   ├── ebird.mjs           ← eBird client for the site's signal digest
-│   ├── ebird-pull.mjs      ← Local archive builder (daily accumulation)
-│   ├── ebird-analyze.mjs   ← Local analysis → CSV for pandas / R
-│   └── ebird-schedule.mjs  ← Installs the daily pull as a launchd job
+│   └── automate.mjs        ← RSS curation engine (Node)
+├── desktop/                ← Faunterra Data Station — everything eBird (Rust)
+│   ├── ebird-core/         ← HTTP, sanitisation, archive, digest, analysis
+│   │   └── src/bin/        ← pull · signals · analyze · schedule · fixture
+│   ├── src-tauri/          ← the desktop window
+│   └── ui/                 ← its interface
 └── package.json
 ```
+
+> **One implementation of the eBird contract, not two.** The digest that feeds
+> this website and the archive builder that runs on your machine are the same
+> Rust code, differing only in which endpoint they call. They used to be two
+> Node scripts that shared a shape by convention; conventions drift.
 
 ---
 
@@ -95,13 +101,18 @@ Cornell Lab of Ornithology. The key is free; you just need an eBird account.
    as a comma-separated list of [eBird region codes](https://ebird.org/region/world)
    (e.g. `IN,IN-KA,IN-TN`). Defaults to `IN`.
 
-Local testing:
+Local testing — prints the digest, writes nothing:
 ```bash
-EBIRD_API_TOKEN=your_key EBIRD_REGIONS=IN,IN-KA node scripts/ebird.mjs
+EBIRD_API_TOKEN=your_key EBIRD_REGIONS=IN,IN-KA npm run ebird:signals -- --stdout
 ```
 
-**Without a key the pipeline still runs** — the eBird pass logs a skip and the
-RSS curation continues untouched.
+This needs a Rust toolchain ([rustup.rs](https://rustup.rs)). The workflow
+installs one only when the secret exists, so an unconfigured repo never pays
+for a compiler it cannot use.
+
+**Without a key the pipeline still runs.** The digest is a separate workflow
+step that is skipped entirely when no secret is set, so RSS curation is never
+affected by eBird being absent, unreachable, or having a bad morning.
 
 **Before you rely on this commercially**, read the
 [eBird API Terms of Use](https://www.birds.cornell.edu/home/ebird-api-terms-of-use/).
@@ -155,7 +166,7 @@ Set `"featured": true` on ONE article to display it as the large hero card.
 ### Schedule
 | When | What |
 |------|------|
-| Every 6 hours (00:00, 06:00, 12:00, 18:00 UTC) | Fetch + filter + summarise new articles; pull eBird field signals |
+| Every 6 hours (00:00, 06:00, 12:00, 18:00 UTC) | Fetch + filter + summarise new articles, then the eBird digest as a separate step |
 | Every Sunday 08:00 UTC | Generate weekly editorial roundup |
 | Manual trigger | Via GitHub Actions → Run workflow |
 
@@ -223,12 +234,17 @@ Also available directly via `getBirdSignals()` and `getNotableSightings()` in
 Separate from the website pipeline. This builds a **local** eBird dataset for
 your own analysis — it never touches `data/` and nothing here is published.
 
+Everything below lives in `desktop/` and is also available as a desktop
+application — see `desktop/README.md`. A Rust toolchain is required
+([rustup.rs](https://rustup.rs)); the `npm run ebird:*` scripts are thin
+wrappers so the commands read the same from the repo root.
+
 ### Why this has to run daily
 
 The eBird API serves a rolling **~30-day window**. Anything older is not
 retrievable through the API at any price; you would have to request the eBird
-Basic Dataset instead. So `ebird-pull.mjs` is an *archive builder*, not a
-fetcher. Run it daily and you accumulate a time series the API cannot give you
+Basic Dataset instead. So the puller is an *archive builder*, not a fetcher.
+Run it daily and you accumulate a time series the API cannot give you
 retroactively. Skip a month and that month is gone.
 
 ### Setup
@@ -256,13 +272,14 @@ and the analysis output are gitignored — see the note on redistribution below.
 ### External drive safety
 
 If `EBIRD_ARCHIVE_DIR` points under `/Volumes` (macOS) or `/mnt` `/media`
-(Linux), the scripts verify the volume is **actually mounted** before writing,
-by checking that it sits on a different device than its parent.
+`/run/media` (Linux), the tools verify the volume is **actually mounted** before
+writing, by checking that it sits on a different device than its parent.
 
 This is not paranoia. With the drive unplugged, macOS lets you create
 `/Volumes/LaCie` as an ordinary folder on the boot disk, and you would silently
-fill internal storage for weeks without noticing. Both scripts refuse and exit
-non-zero instead — so a scheduled job reports the failure rather than hiding it.
+fill internal storage for weeks without noticing. Every tool that writes refuses
+and exits non-zero instead — so a scheduled job reports the failure rather than
+hiding it, and the desktop app disables its own pull button.
 
 ### Commands
 
@@ -270,11 +287,17 @@ non-zero instead — so a scheduled job reports the failure rather than hiding i
 npm run ebird:probe                  # 1 request — reports what the API returned
 npm run ebird:pull                   # yesterday
 npm run ebird:pull -- --days 30      # backfill the whole available window
-npm run ebird:pull -- --dry-run      # plan the requests, send none
-npm run ebird:analyze                # analyse the archive → ./ebird-analysis
-npm run ebird:analyze -- --out /Volumes/LaCie/faunterra/analysis
+npm run ebird:pull -- --json         # timestamped events, one JSON object per line
+npm run ebird:signals                # the website digest → data/ebird-signals.json
+npm run ebird:signals -- --stdout    # print it, write nothing
+npm run ebird -- analyze             # analyse the archive → ./ebird-analysis
+npm run ebird -- analyze --out /Volumes/LaCie/faunterra/analysis
 npm run ebird:schedule -- --check    # validate the daily job setup
+npm run ebird:test                   # 28 tests, no network required
+npm run app                          # the desktop window
 ```
+
+Or work in `desktop/` directly with `cargo run -p ebird-core --bin <name>`.
 
 Settings come from `.env.local` (copy `.env.local.example`), so you do not have
 to export anything before each run. Values already in your environment win, so
@@ -288,7 +311,21 @@ half-written day that later gets skipped as "already archived".
 Start with `ebird:probe`. It spends exactly one request and tells you how many
 rows came back versus how many distinct species — which is how you find out
 whether the endpoint gives you every observation or collapses to one row per
-species. Calibrate on the real response before planning a 30-day backfill.
+species. **The documentation does not say, and the answer decides what this
+archive can ever tell you.** Calibrate on the real response before planning a
+30-day backfill.
+
+To exercise the whole pull path without spending any quota:
+
+```bash
+cd desktop
+cargo run -p ebird-core --bin fixture 8788 &
+EBIRD_API_BASE=http://127.0.0.1:8788/v2 cargo run -p ebird-core --bin pull -- --days 4
+```
+
+The fixture speaks eBird's response shape over a real socket; nothing is mocked,
+only the base URL changes. Rows it produces are stamped `"live": false` inside
+every archive file, and anything derived from them says so.
 
 ### Scheduling the daily pull
 
@@ -305,9 +342,15 @@ npm run ebird:schedule -- --status      # loaded? last run? recent log lines
 npm run ebird:schedule -- --uninstall
 ```
 
-Defaults to 09:00 local with `--days 3`. Override with `--hour`, `--minute`,
-`--days`. The three-day overlap means a couple of missed runs self-heal at no
-extra cost, since already-archived days are skipped.
+Defaults to **09:15 local, `--days 1`**. Override with `--hour`, `--minute`,
+`--days`. Raising `--days` gives you an overlap that self-heals a couple of
+missed runs at no extra cost, since already-archived days are skipped without
+spending a request — `--days 3` is a reasonable setting if the machine is often
+asleep.
+
+The agent points at the `pull` binary sitting beside `schedule` in the same
+build directory, so run `cargo build --release` in `desktop/` first and install
+from `target/release`. `--program <path>` overrides it.
 
 `--install` refuses to proceed if preflight fails, rather than installing a job
 that will quietly fail every morning at nine.
@@ -328,13 +371,17 @@ launchctl kickstart -k gui/$(id -u)/com.faunterra.ebird
 npm run ebird:schedule -- --status
 ```
 
-On Linux, `--print` emits the equivalent cron line and the systemd `OnCalendar`
-setting (with `Persistent=true`, systemd's equivalent of catching up a missed
-run). `--install` is macOS-only and says so rather than half-working.
+`--install` is **macOS-only** and says so rather than half-working: preflight
+fails on the platform check and refuses. `--print` still emits the plist
+anywhere, which is useful for reading it, but there is no Linux installer. On
+Linux use a systemd timer with `Persistent=true` — systemd's equivalent of
+catching up a missed run — pointing at the same `pull` binary. Writing that
+installer is a small job nobody has asked for yet.
 
 ### Analysis output
 
-`ebird:analyze` prints a terminal report and writes tidy CSVs:
+`npm run ebird -- analyze` prints a terminal report and writes tidy CSVs. It
+only ever reads the archive — the output is disposable and re-derivable:
 
 | File | Grain |
 |---|---|
@@ -343,7 +390,7 @@ run). `--install` is macOS-only and says so rather than half-working.
 | `daily-summary.csv` | one row per region-day |
 | `locations.csv` | one row per location, ranked by species richness |
 | `accumulation.csv` | cumulative distinct species by date |
-| `summary.json` | totals and date range, machine-readable |
+| `summary.json` | totals, date range and top species, machine-readable |
 
 ```python
 import pandas as pd

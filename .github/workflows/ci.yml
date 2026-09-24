@@ -1,0 +1,54 @@
+name: CI
+
+# Checks belong on pushes and pull requests, not on a data-refresh cron. The
+# curation workflow used to run the eBird tests every six hours and nothing on
+# push, which is the wrong way round: it spent time when nothing had changed
+# and stayed silent when something had.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  site:
+    name: Site — typecheck & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Build the static site
+        run: npm run build
+      - name: Curation script parses
+        run: node --check scripts/automate.mjs
+
+  core:
+    name: eBird core — test & lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop
+      # Only ebird-core. The Tauri shell needs a system WebView and is built on
+      # the machine that ships it; everything that touches data lives here and
+      # is verifiable headless, which is the point of the split.
+      - name: Test
+        run: cargo test --manifest-path desktop/Cargo.toml -p ebird-core
+      - name: Clippy
+        run: cargo clippy --manifest-path desktop/Cargo.toml -p ebird-core --all-targets -- -D warnings
+      - name: Format
+        run: cargo fmt --manifest-path desktop/Cargo.toml -p ebird-core -- --check

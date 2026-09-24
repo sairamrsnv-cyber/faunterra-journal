@@ -53,11 +53,7 @@ pub struct PullSummary {
 /// `emit` is called from this task, in order. The desktop shell forwards each
 /// event straight to the WebView; the CLI prints it. Same events, same order,
 /// so what you debug on the terminal is what you saw in the window.
-pub async fn run<F>(
-    client: &EbirdClient,
-    req: &PullRequest,
-    mut emit: F,
-) -> PullSummary
+pub async fn run<F>(client: &EbirdClient, req: &PullRequest, mut emit: F) -> PullSummary
 where
     F: FnMut(PullEvent),
 {

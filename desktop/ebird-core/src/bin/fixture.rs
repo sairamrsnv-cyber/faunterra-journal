@@ -55,7 +55,10 @@ const LOCATIONS: &[(&str, f64, f64)] = &[
 struct Lcg(u64);
 impl Lcg {
     fn next(&mut self) -> u64 {
-        self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        self.0 = self
+            .0
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         self.0 >> 33
     }
     fn below(&mut self, n: usize) -> usize {
@@ -105,6 +108,52 @@ fn observations(region: &str, y: &str, m: &str, d: &str) -> String {
     format!("[{}]", rows.join(","))
 }
 
+/// Unusual species for a region over the trailing window. Fewer rows than a
+/// full day, several reports per species, and a deliberate spread of review
+/// states — the digest's whole job is to hedge on unreviewed rarities, so the
+/// fixture has to produce some.
+fn notable(region: &str) -> String {
+    let mut rng = Lcg(seed_from(&format!("notable{region}")));
+    let count = 24 + rng.below(20);
+    let mut rows: Vec<String> = Vec::with_capacity(count);
+
+    for _ in 0..count {
+        // A narrow slice of the taxonomy, so species repeat and the ranking
+        // pass actually has duplicates to collapse.
+        let (code, com, sci) = SPECIES[rng.below(6)];
+        let (loc, lat, lng) = LOCATIONS[rng.below(LOCATIONS.len())];
+        let day = 1 + rng.below(14);
+        let reviewed = rng.below(100) > 45;
+        let valid = rng.below(100) > 20;
+        rows.push(format!(
+            r#"{{"speciesCode":"{code}","comName":"{com}","sciName":"{sci}","locId":"L{locid}","locName":"{loc}","obsDt":"2026-09-{day:02} {hour:02}:{min:02}","howMany":{n},"lat":{lat:.5},"lng":{lng:.5},"obsValid":{valid},"obsReviewed":{reviewed},"obsId":"OBS{obsid}","subId":"S{subid}","userDisplayName":"Fixture Observer"}}"#,
+            locid = 1_000_000 + seed_from(loc) % 8_999_999,
+            hour = 5 + rng.below(13),
+            min = rng.below(60),
+            n = 1 + rng.below(5),
+            obsid = 100_000_000 + rng.next() % 899_999_999,
+            subid = 100_000_000 + rng.next() % 899_999_999,
+        ));
+    }
+    format!("[{}]", rows.join(","))
+}
+
+/// A region's activity for one day. The real endpoint omits fields on days with
+/// no activity, so the fixture omits them too — a digest that turns an absent
+/// figure into a zero would report a dead morning that never happened.
+fn stats(region: &str, y: &str, m: &str, d: &str) -> String {
+    let mut rng = Lcg(seed_from(&format!("stats{region}{y}{m}{d}")));
+    if rng.below(100) < 8 {
+        return "{}".to_string();
+    }
+    format!(
+        r#"{{"numChecklists":{c},"numContributors":{p},"numSpecies":{s}}}"#,
+        c = 120 + rng.below(900),
+        p = 40 + rng.below(300),
+        s = 90 + rng.below(210),
+    )
+}
+
 fn respond(stream: &mut TcpStream, status: u16, reason: &str, body: &str) {
     let _ = write!(
         stream,
@@ -122,7 +171,11 @@ fn handle(mut stream: TcpStream) {
     if reader.read_line(&mut request_line).is_err() {
         return;
     }
-    let path = request_line.split_whitespace().nth(1).unwrap_or("/").to_string();
+    let path = request_line
+        .split_whitespace()
+        .nth(1)
+        .unwrap_or("/")
+        .to_string();
 
     let mut token = String::new();
     loop {
@@ -145,21 +198,67 @@ fn handle(mut stream: TcpStream) {
     // wrong key is a 403, not an empty list.
     if token.len() < 6 {
         eprintln!("  fixture  403  {path}  (token missing or too short)");
-        respond(&mut stream, 403, "Forbidden", r#"{"errors":[{"status":"403"}]}"#);
+        respond(
+            &mut stream,
+            403,
+            "Forbidden",
+            r#"{"errors":[{"status":"403"}]}"#,
+        );
         return;
     }
 
-    let parts: Vec<&str> = path.split('?').next().unwrap_or("").split('/').filter(|p| !p.is_empty()).collect();
+    let parts: Vec<&str> = path
+        .split('?')
+        .next()
+        .unwrap_or("")
+        .split('/')
+        .filter(|p| !p.is_empty())
+        .collect();
+
     // /v2/data/obs/{region}/historic/{y}/{m}/{d}
     if parts.len() == 8 && parts[1] == "data" && parts[2] == "obs" && parts[4] == "historic" {
         let body = observations(parts[3], parts[5], parts[6], parts[7]);
-        eprintln!("  fixture  200  {}  ({} bytes)", parts[3..].join("/"), body.len());
+        eprintln!(
+            "  fixture  200  {}  ({} bytes)",
+            parts[3..].join("/"),
+            body.len()
+        );
+        respond(&mut stream, 200, "OK", &body);
+        return;
+    }
+
+    // /v2/data/obs/{region}/recent/notable
+    if parts.len() == 6
+        && parts[1] == "data"
+        && parts[2] == "obs"
+        && parts[4] == "recent"
+        && parts[5] == "notable"
+    {
+        let body = notable(parts[3]);
+        eprintln!(
+            "  fixture  200  notable/{}  ({} bytes)",
+            parts[3],
+            body.len()
+        );
+        respond(&mut stream, 200, "OK", &body);
+        return;
+    }
+
+    // /v2/product/stats/{region}/{y}/{m}/{d}
+    if parts.len() == 7 && parts[1] == "product" && parts[2] == "stats" {
+        let body = stats(parts[3], parts[4], parts[5], parts[6]);
+        eprintln!("  fixture  200  stats/{}  ({} bytes)", parts[3], body.len());
         respond(&mut stream, 200, "OK", &body);
         return;
     }
 
     eprintln!("  fixture  404  {path}");
-    respond(&mut stream, 404, "Not Found", r#"{"errors":[{"status":"404"}]}"#);
+    respond(
+        &mut stream,
+        404,
+        "Not Found",
+        r#"{"errors":[{"status":"404"}]}"#,
+    );
 }
 
 fn main() {
