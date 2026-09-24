@@ -1,0 +1,31 @@
+# Faunterra Data Station — workspace
+#
+# Two members, deliberately separated:
+#
+#   ebird-core  pure logic. HTTP, sanitisation, archive writes, analysis.
+#               NO GUI dependencies, so it compiles, tests and RUNS on any
+#               platform — including CI and headless containers. This is where
+#               every decision that touches data lives.
+#
+#   src-tauri   the desktop shell. Window, menu, and a thin command layer that
+#               forwards to ebird-core and streams its events to the WebView.
+#               Needs a system WebView (WebKit / WKWebView), so it only builds
+#               where one exists.
+#
+# The split is not ceremony. It means the data path can be verified without a
+# display server, and a GUI bug can never be confused for a data bug.
+[workspace]
+resolver = "2"
+members = ["ebird-core", "src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono     = { version = "0.4", default-features = false, features = ["clock", "std"] }
+tokio      = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+reqwest    = { version = "0.12", default-features = false, features = ["rustls-tls", "charset", "http2"] }

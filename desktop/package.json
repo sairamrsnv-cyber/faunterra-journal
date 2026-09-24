@@ -1,0 +1,18 @@
+{
+  "name": "faunterra-data-station",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Desktop archive builder for eBird observations.",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "icons": "tauri icon src-tauri/icons/icon.png",
+    "pull": "cargo run -p ebird-core --bin pull --",
+    "probe": "cargo run -p ebird-core --bin pull -- --probe",
+    "fixture": "cargo run -p ebird-core --bin fixture",
+    "check": "cargo test -p ebird-core && cargo clippy -p ebird-core -- -D warnings"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

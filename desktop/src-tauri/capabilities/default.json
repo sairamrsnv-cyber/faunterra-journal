@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "What the window is allowed to do. Deliberately minimal: the interface listens for pull events and calls this application's own commands. It is granted no filesystem, shell, HTTP or dialog access — anything touching disk or the network happens in Rust, where the API key lives and never crosses the bridge.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

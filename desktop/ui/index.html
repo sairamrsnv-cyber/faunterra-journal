@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Faunterra Data Station</title>
+<!--
+  The window.
+
+  No external requests. Not a font, not a stylesheet, not an icon. The only
+  outbound connection this application makes is to eBird, which makes "what is
+  it talking to" a question with a one-word answer. Faunterra's typefaces are
+  used when the machine already has them and fall back to system faces when it
+  does not — a local tool has no business phoning a CDN to look correct.
+-->
+<style>
+  :root {
+    color-scheme: light;
+    --ivory:#F5F1E8; --stone:#EDE8DC; --stone-dark:#E6E1D5;
+    --charcoal:#0B0B0B; --forest:#2D3B2F; --forest-deep:#1C2B1E;
+    --bronze:#A68A64; --bronze-2:#C9A97A; --moss:#6B705C;
+
+    --surface:var(--ivory); --panel:#FBF9F3; --line:var(--stone-dark);
+    --ink:var(--charcoal); --ink-2:#44483F; --ink-3:var(--moss);
+    --bar:var(--forest); --accent:var(--bronze);
+    --btn:var(--forest); --btn-ink:var(--ivory);
+
+    /* Reserved status steps. Never reused as a series colour, and never the
+       only thing carrying a meaning — every one is paired with a text label. */
+    --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+
+    --display:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+    --ui:'Syne','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --body:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface:#141613; --panel:#1B1E19; --line:#2B2F28;
+      --ink:#F2EFE6; --ink-2:#C6C4B7; --ink-3:#8C8F81;
+      --bar:#7E9A80; --accent:var(--bronze-2);
+      /* Forest on a near-black panel is technically legible and visually
+         absent. A primary action has to read as one. */
+      --btn:#7E9A80; --btn-ink:#10140F;
+      --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface:#141613; --panel:#1B1E19; --line:#2B2F28;
+    --ink:#F2EFE6; --ink-2:#C6C4B7; --ink-3:#8C8F81;
+    --bar:#7E9A80; --accent:var(--bronze-2);
+    --btn:#7E9A80; --btn-ink:#10140F;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--surface);color:var(--ink);font-family:var(--body);
+    font-size:14px;line-height:1.5;overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{display:flex;flex-direction:column;height:100vh}
+
+  /* ── Title bar ─────────────────────────────────────────── */
+  .titlebar{
+    -webkit-app-region:drag; user-select:none;
+    height:46px;flex:0 0 46px;display:flex;align-items:center;
+    justify-content:center;gap:10px;
+    border-bottom:1px solid var(--line);background:var(--panel);
+  }
+  .wordmark{
+    font-family:var(--ui);font-size:10px;font-weight:600;
+    letter-spacing:.3em;text-transform:uppercase;color:var(--ink-2);
+  }
+  .wordmark b{color:var(--ink);font-weight:700}
+
+  /* ── Banner ────────────────────────────────────────────── */
+  .banner{
+    -webkit-app-region:no-drag;
+    display:none;align-items:center;gap:10px;padding:9px 18px;
+    border-bottom:1px solid var(--line);
+    font-family:var(--ui);font-size:11px;letter-spacing:.06em;
+  }
+  .banner.show{display:flex}
+  .banner[data-level="warning"]{background:rgba(250,178,25,.14);color:var(--ink)}
+  .banner[data-level="critical"]{background:rgba(208,59,59,.14);color:var(--ink)}
+  .banner .dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+  .banner[data-level="warning"] .dot{background:var(--warning)}
+  .banner[data-level="critical"] .dot{background:var(--critical)}
+  .banner strong{font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+
+  /* ── Main split ────────────────────────────────────────── */
+  .split{display:grid;grid-template-columns:300px 1fr;flex:1;min-height:0}
+  .rail{
+    border-right:1px solid var(--line);background:var(--panel);
+    padding:20px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:18px;
+  }
+  .stack{display:flex;flex-direction:column;min-height:0}
+
+  h2{
+    font-family:var(--ui);font-size:9px;font-weight:600;letter-spacing:.28em;
+    text-transform:uppercase;color:var(--ink-3);margin-bottom:10px;
+  }
+
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field label{
+    font-family:var(--ui);font-size:9px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--ink-3);
+  }
+  input[type=text]{
+    background:var(--surface);border:1px solid var(--line);border-radius:5px;
+    padding:8px 10px;color:var(--ink);font-family:var(--mono);font-size:13px;
+  }
+  input[type=text]:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  input[type=range]{width:100%;accent-color:var(--bar)}
+  .rowline{display:flex;justify-content:space-between;align-items:baseline}
+  .rowline .v{font-family:var(--mono);font-size:13px;color:var(--ink)}
+
+  /* Status lines: an icon glyph and a word, so the colour is decoration. */
+  .check{display:flex;gap:8px;align-items:flex-start;padding:6px 0;
+         border-bottom:1px solid var(--line);font-size:12px}
+  .check:last-child{border-bottom:0}
+  .check .g{font-family:var(--mono);font-weight:700;flex:0 0 14px;line-height:1.5}
+  .check .k{flex:0 0 62px;font-family:var(--ui);font-size:9px;letter-spacing:.16em;
+            text-transform:uppercase;color:var(--ink-3);padding-top:2px}
+  .check .t{flex:1;min-width:0;color:var(--ink-2);overflow-wrap:anywhere;
+            font-family:var(--mono);font-size:11.5px}
+  .check .t .note{display:block;font-family:var(--body);font-size:11px;
+                  color:var(--ink-3);margin-top:2px;overflow-wrap:normal}
+  .ok  .g{color:var(--good)}
+  .warn .g{color:var(--serious)}
+  .bad .g{color:var(--critical)}
+
+  button.primary{
+    -webkit-app-region:no-drag;
+    width:100%;padding:13px;border:0;border-radius:6px;cursor:pointer;
+    background:var(--btn);color:var(--btn-ink);
+    font-family:var(--ui);font-size:11px;font-weight:600;
+    letter-spacing:.24em;text-transform:uppercase;
+    transition:opacity .15s,transform .05s;
+  }
+  button.primary:hover:not(:disabled){opacity:.88}
+  button.primary:active:not(:disabled){transform:translateY(1px)}
+  button.primary:disabled{opacity:.42;cursor:not-allowed}
+  button.ghost{
+    -webkit-app-region:no-drag;
+    background:none;border:1px solid var(--line);border-radius:5px;
+    padding:7px 12px;color:var(--ink-2);cursor:pointer;
+    font-family:var(--ui);font-size:9px;letter-spacing:.18em;text-transform:uppercase;
+  }
+  button.ghost:hover{border-color:var(--accent);color:var(--ink)}
+
+  /* ── Log ───────────────────────────────────────────────── */
+  .loghead{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 20px 10px;border-bottom:1px solid var(--line);
+  }
+  .log{
+    flex:1;min-height:0;overflow-y:auto;padding:12px 20px 20px;
+    font-family:var(--mono);font-size:11.5px;line-height:1.75;
+  }
+  .log .empty{color:var(--ink-3);font-family:var(--body);font-size:13px;
+              padding:28px 0;max-width:46ch}
+  .ln{display:flex;gap:10px;white-space:pre-wrap;word-break:break-all}
+  .ln .ts{color:var(--ink-3);flex:0 0 auto;font-variant-numeric:tabular-nums}
+  .ln .tag{flex:0 0 46px;font-weight:700;letter-spacing:.04em}
+  .ln .msg{flex:1;min-width:0;color:var(--ink-2)}
+  .ln.cont .tag{opacity:0}
+  .t-plan .tag,.t-wait .tag{color:var(--ink-3)}
+  .t-get  .tag{color:var(--accent)}
+  .t-ok   .tag{color:var(--good)}
+  .t-parse .tag,.t-skip .tag{color:var(--ink-3)}
+  .t-strip .tag{color:var(--bar)}
+  .t-write .tag{color:var(--good)}
+  .t-fail .tag{color:var(--critical)}
+  .t-fail .msg{color:var(--ink)}
+  .t-done .tag{color:var(--ink)}
+  .t-done .msg{color:var(--ink);font-weight:600}
+  .rule{border:0;border-top:1px solid var(--line);margin:8px 0}
+
+  /* ── Results ───────────────────────────────────────────── */
+  .results{
+    flex:0 0 auto;border-top:1px solid var(--line);background:var(--panel);
+    padding:16px 20px 14px;display:flex;flex-direction:column;
+    max-height:46vh;min-height:0;
+  }
+  .bars-scroll{overflow-y:auto;min-height:0;padding-right:4px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+        background:var(--line);border:1px solid var(--line);border-radius:6px;
+        overflow:hidden;margin-bottom:16px}
+  .kpi{background:var(--panel);padding:12px 14px}
+  .kpi .k{font-family:var(--ui);font-size:8.5px;letter-spacing:.2em;
+          text-transform:uppercase;color:var(--ink-3)}
+  .kpi .v{font-family:var(--display);font-size:30px;line-height:1.15;
+          color:var(--ink);font-variant-numeric:tabular-nums;margin-top:2px}
+  .kpi .s{font-size:11px;color:var(--ink-3)}
+
+  .bars{display:flex;flex-direction:column;gap:5px}
+  .bar{display:grid;grid-template-columns:168px 1fr 52px;align-items:center;gap:12px}
+  .bar .nm{font-size:12px;color:var(--ink);overflow:hidden;
+           text-overflow:ellipsis;white-space:nowrap}
+  .bar .tr{display:block;height:11px;background:var(--stone-dark);
+           border-radius:3px;overflow:hidden}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .bar .tr{background:var(--line)}
+  }
+  :root[data-theme="dark"] .bar .tr{background:var(--line)}
+  /* Rounded data-end, square against the baseline it grows from. */
+  .bar .fl{display:block;height:100%;background:var(--bar);
+           border-radius:0 3px 3px 0;min-width:2px}
+  .bar .n{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);
+          text-align:right;font-variant-numeric:tabular-nums}
+  .caveat{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);
+          font-size:11.5px;color:var(--ink-3);max-width:74ch;display:flex;gap:8px}
+  .caveat .g{flex:0 0 auto}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="titlebar">
+    <span class="wordmark"><b>Faunterra</b> &nbsp;·&nbsp; Data Station</span>
+  </div>
+
+  <div class="banner" id="banner" data-level="warning">
+    <span class="dot" aria-hidden="true"></span>
+    <strong id="banner-tag">Notice</strong>
+    <span id="banner-text"></span>
+  </div>
+
+  <div class="split">
+    <!-- ── Left rail: what we are about to do ──────────── -->
+    <aside class="rail">
+      <div>
+        <h2>Source</h2>
+        <div id="checks"></div>
+      </div>
+
+      <div class="field">
+        <label for="regions">Regions</label>
+        <input type="text" id="regions" value="IN" spellcheck="false"
+               placeholder="IN, IN-KL, US-NY">
+      </div>
+
+      <div class="field">
+        <label for="days">Window</label>
+        <input type="range" id="days" min="1" max="30" value="3">
+        <div class="rowline">
+          <span style="font-size:11.5px;color:var(--ink-3)">days back</span>
+          <span class="v" id="days-v">3</span>
+        </div>
+      </div>
+
+      <button class="primary" id="pull">Pull now</button>
+      <button class="ghost" id="reveal">Show archive</button>
+
+      <p style="font-size:11.5px;color:var(--ink-3);line-height:1.6;margin-top:2px">
+        The API serves a rolling 30-day window. A day not archived before it
+        falls out is not recoverable — not at a price, not at all.
+      </p>
+    </aside>
+
+    <!-- ── Right: the mechanism, in the open ───────────── -->
+    <section class="stack">
+      <div class="loghead">
+        <h2 style="margin:0">Transfer log</h2>
+        <button class="ghost" id="clear">Clear</button>
+      </div>
+      <div class="log" id="log">
+        <p class="empty">Nothing pulled yet. Every request, every byte, every
+        field stripped and every file written will be printed here as it
+        happens — a collection run you cannot watch is one you have to take
+        on faith.</p>
+      </div>
+
+      <div class="results" id="results" hidden>
+        <h2>Archive</h2>
+        <div class="kpis" id="kpis"></div>
+        <h2>Most recorded</h2>
+        <div class="bars-scroll"><div class="bars" id="bars"></div></div>
+        <p class="caveat">
+          <span class="g" aria-hidden="true">&#9432;</span>
+          <span id="caveat-text"></span>
+        </p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+// ── Bridge ────────────────────────────────────────────────
+// Tauri when it is there; a replay of captured events when it is not, so the
+// interface can be built and reviewed without compiling a WebView.
+const TAURI   = window.__TAURI__ || null;
+const invoke  = (cmd, args) => TAURI ? TAURI.core.invoke(cmd, args) : preview(cmd, args);
+const listen  = (ev, cb)    => TAURI ? TAURI.event.listen(ev, e => cb(e.payload)) : null;
+
+const $ = id => document.getElementById(id);
+const log = $('log'), banner = $('banner');
+
+const fmt = n => (n ?? 0).toLocaleString('en-US');
+const bytes = n => {
+  if (n == null) return '—';
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  return (n/1048576).toFixed(2) + ' MB';
+};
+const now = () => new Date().toTimeString().slice(0,8) + '.' +
+                  String(new Date().getMilliseconds()).padStart(3,'0');
+
+// ── Log ───────────────────────────────────────────────────
+let logStamp = now;
+
+function line(cls, tag, msg, cont) {
+  if (log.firstElementChild?.classList.contains('empty')) log.innerHTML = '';
+  const el = document.createElement('div');
+  el.className = 'ln ' + cls + (cont ? ' cont' : '');
+  el.innerHTML = `<span class="ts"></span><span class="tag"></span><span class="msg"></span>`;
+  el.children[0].textContent = logStamp();
+  el.children[1].textContent = tag;
+  el.children[2].textContent = msg;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+}
+function rule() { const h = document.createElement('hr'); h.className='rule'; log.appendChild(h); }
+
+// Mirrors the terminal renderer exactly. Same events, same words — what you
+// debug on the command line is what you saw in the window.
+function render(ev) {
+  switch (ev.kind) {
+    case 'plan':
+      line('t-plan','PLAN', `${ev.requests} request(s): ${ev.regions.length} region(s) × ${ev.dates.length} day(s)`);
+      line('t-plan','', `endpoint  ${ev.endpoint}${ev.live ? '' : '   [SYNTHETIC — not eBird]'}`, true);
+      line('t-plan','', `archive   ${ev.archive}`, true);
+      break;
+    case 'skip':
+      line('t-skip','SKIP', `${ev.region}  ${ev.date}  — ${ev.reason}`); break;
+    case 'request':
+      line('t-get','GET', `${ev.region}  ${ev.date}`);
+      line('t-get','', `${ev.method} ${ev.url}`, true);
+      line('t-get','', ev.auth, true);
+      break;
+    case 'response':
+      line(ev.status >= 400 ? 't-fail' : 't-ok', String(ev.status),
+           `${bytes(ev.bytes)} in ${ev.ms} ms`); break;
+    case 'parse':
+      line('t-parse','PARSE', `${fmt(ev.rows)} rows, ${ev.species} distinct species`); break;
+    case 'privacy':
+      line('t-strip','STRIP', `removed ${ev.fields.join(', ')} (${fmt(ev.occurrences)} occurrence(s)) before disk`); break;
+    case 'write':
+      line('t-write','WRITE', `${ev.path}  ${bytes(ev.bytes)}  (tmp → rename, atomic)`); break;
+    case 'throttle':
+      line('t-wait','WAIT', `${ev.ms} ms — ${ev.why}`); break;
+    case 'failed':
+      line('t-fail','FAIL', `${ev.region}  ${ev.date}  — ${ev.reason}`); break;
+    case 'done':
+      rule();
+      line('t-done','DONE', `fetched ${ev.fetched}  skipped ${ev.skipped}  failed ${ev.failed}  in ${fmt(ev.ms)} ms`);
+      if (ev.rows) line('t-done','', `${fmt(ev.rows)} observations added`, true);
+      finish();
+      break;
+  }
+}
+
+// ── Status rail ───────────────────────────────────────────
+function check(cls, glyph, key, text) {
+  return `<div class="check ${cls}"><span class="g">${glyph}</span>` +
+         `<span class="k">${key}</span><span class="t">${text}</span></div>`;
+}
+
+function paintStatus(s) {
+  const rows = [];
+  rows.push(s.hasToken
+    ? check('ok','✓','Key', `present · ${s.tokenHint}`)
+    : check('bad','✕','Key', `missing — add EBIRD_API_TOKEN to ${s.envFile}`));
+
+  if (s.archiveProblem) {
+    rows.push(check('bad','✕','Archive', s.archiveProblem));
+  } else {
+    rows.push(check('ok','✓','Archive',
+      s.archiveDir + (s.archiveExternal
+        ? '<span class="note">external volume · verified mounted</span>' : '')));
+  }
+  rows.push(check(s.live ? 'ok' : 'warn', s.live ? '✓' : '!', 'Endpoint', s.endpoint));
+  rows.push(check('ok','·','Archived', s.daysArchived === 0
+    ? 'no days yet' : `${s.daysArchived} day(s) on disk`));
+  $('checks').innerHTML = rows.join('');
+
+  if (!s.live) {
+    showBanner('warning','Synthetic source',
+      'Connected to a local fixture, not eBird. Rows written now are generated and are marked as such inside every archive file.');
+  } else if (!s.hasToken) {
+    showBanner('critical','No API key',
+      'Add EBIRD_API_TOKEN to ' + s.envFile + ' from a dedicated Faunterra eBird account, then reopen.');
+  }
+  $('pull').disabled = !s.hasToken || !!s.archiveProblem || s.running;
+  if (s.regions?.length) $('regions').value = s.regions.join(', ');
+}
+
+function showBanner(level, tag, text) {
+  banner.dataset.level = level;
+  $('banner-tag').textContent = tag;
+  $('banner-text').textContent = text;
+  banner.classList.add('show');
+}
+
+// ── Results ───────────────────────────────────────────────
+function paintSummary(s) {
+  if (!s) return;
+  $('results').hidden = false;
+
+  // Built as DOM rather than an HTML string, for two reasons that both bite.
+  //
+  // CSP: Tauri rewrites the configured policy and adds a nonce to style-src,
+  // and a nonce voids 'unsafe-inline'. An inline style="width:42%" is then
+  // silently dropped — the element fills its container and every bar renders
+  // the same length whatever its value. A chart that lies about magnitude is
+  // worse than no chart. Setting .style through CSSOM is not inline style and
+  // is unaffected.
+  //
+  // Injection: species and place names come from an external API. Through
+  // textContent they are text; through innerHTML they are markup.
+  const el = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  };
+
+  // With nothing archived every tile is an em dash. A "0 species" reads as a
+  // finding — we looked and found none — when we have not looked yet.
+  const empty = !s.days;
+  const num = v => empty ? '—' : fmt(v);
+
+  const kpis = $('kpis');
+  kpis.replaceChildren();
+  const tile = (k, v, sub) => {
+    const box = el('div','kpi');
+    box.append(el('div','k',k), el('div','v', v == null ? '—' : v));
+    if (sub) box.append(el('div','s',sub));
+    kpis.append(box);
+  };
+  tile('Days', empty ? '—' : s.days,
+       s.firstDate ? `${s.firstDate} → ${s.lastDate}` : 'nothing archived');
+  tile('Records',   num(s.records));
+  tile('Species',   num(s.species), 'distinct across archive');
+  tile('Locations', num(s.locations));
+
+  const top = (s.topSpecies || []).filter(t => Number.isFinite(t.records));
+  const max = Math.max(1, ...top.map(t => t.records));
+  const bars = $('bars');
+  bars.replaceChildren();
+  for (const t of top) {
+    const row  = el('div','bar');
+    const name = el('span','nm', t.comName || t.speciesCode || '—');
+    if (t.sciName) name.title = t.sciName;
+    const track = el('span','tr');
+    const fill  = el('span','fl');
+    fill.style.width = (t.records / max * 100).toFixed(1) + '%';
+    track.append(fill);
+    row.append(name, track, el('span','n', fmt(t.records)));
+    bars.append(row);
+  }
+  $('caveat-text').textContent = s.caveat || '';
+}
+
+// ── Actions ───────────────────────────────────────────────
+let running = false;
+function finish() {
+  if (!running) return;   // whichever signal arrives first wins
+  running = false;
+  $('pull').disabled = false;
+  $('pull').textContent = 'Pull now';
+  if (!log.querySelector('.t-done')) {
+    line('t-done','DONE', 'Pull finished. No event stream — the archive below is the record.');
+  }
+  invoke('summary').then(paintSummary).catch(() => {});
+  invoke('status').then(paintStatus).catch(() => {});
+}
+
+$('days').addEventListener('input', e => $('days-v').textContent = e.target.value);
+$('clear').addEventListener('click', () => {
+  log.innerHTML = '<p class="empty">Log cleared. The archive on disk is untouched.</p>';
+});
+$('reveal').addEventListener('click', () => invoke('reveal_archive').catch(() => {}));
+
+$('pull').addEventListener('click', () => {
+  if (running) return;
+  running = true;
+  $('pull').disabled = true;
+  $('pull').textContent = 'Pulling…';
+  log.innerHTML = '';
+  const regionsOverride = $('regions').value.split(',').map(r => r.trim()).filter(Boolean);
+  invoke('start_pull', { days: Number($('days').value), regionsOverride })
+    .then(() => finish())
+    .catch(err => { line('t-fail','FAIL', String(err)); finish(); });
+});
+
+listen('pull-event', render);
+invoke('status').then(paintStatus).catch(() => {});
+invoke('summary').then(paintSummary).catch(() => {});
+
+// ── Preview mode ──────────────────────────────────────────
+// Replays a captured run so the interface can be designed, reviewed and
+// screenshotted without a WebView. Never reachable inside the real app: the
+// Tauri bridge takes precedence whenever it exists.
+async function preview(cmd) {
+  const res = await fetch('./preview/state.json').then(r => r.json()).catch(() => null);
+  if (!res) throw new Error('preview data unavailable');
+  if (cmd === 'status')  return res.status;
+  if (cmd === 'summary') return res.summary;
+  if (cmd === 'start_pull') {
+    // Replay with each event's own captured timestamp, so the pacing — the
+    // politeness gap between requests included — reads as it really ran.
+    let ts = now();
+    logStamp = () => ts;
+    const speed = Number(new URLSearchParams(location.search).get('speed') || 14);
+    for (const ev of (res.events || [])) {
+      if (ev.kind === 'plan') {
+        $('days').value = ev.dates.length;
+        $('days-v').textContent = ev.dates.length;
+      }
+      ts = ev.ts || now();
+      render(ev);
+      await new Promise(r => setTimeout(r, speed));
+    }
+    return;
+  }
+  return null;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+[package]
+name        = "faunterra-data-station"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Faunterra Data Station — a desktop archive builder for eBird observations."
+# Tauri needs a system WebView (WKWebView on macOS, WebKitGTK on Linux). It is
+# therefore the ONLY part of this project that cannot be built everywhere — and
+# nothing that touches data lives here. See the workspace manifest.
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri      = { version = "2", features = [] }
+serde.workspace      = true
+serde_json.workspace = true
+tokio.workspace      = true
+ebird-core = { path = "../ebird-core" }
+
+[features]
+# Keeps `cargo build` honest about release profiles in CI.
+default = []

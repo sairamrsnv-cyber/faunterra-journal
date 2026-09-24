@@ -1,0 +1,24 @@
+[package]
+name    = "ebird-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "eBird archive builder — fetch, sanitise, store, analyse."
+
+[dependencies]
+serde.workspace      = true
+serde_json.workspace = true
+chrono.workspace     = true
+tokio.workspace      = true
+reqwest.workspace    = true
+
+[[bin]]
+name = "pull"
+path = "src/bin/pull.rs"
+
+# A local stand-in that speaks eBird's response shape. Exists so the pull path
+# can be exercised end to end — real sockets, real HTTP, real parsing, real
+# disk — without spending API quota or needing the network.
+[[bin]]
+name = "fixture"
+path = "src/bin/fixture.rs"

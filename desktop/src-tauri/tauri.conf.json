@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Faunterra Data Station",
+  "version": "0.1.0",
+  "identifier": "com.faunterra.datastation",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Faunterra Data Station",
+        "width": 1180,
+        "height": 820,
+        "minWidth": 940,
+        "minHeight": 640,
+        "titleBarStyle": "Transparent",
+        "hiddenTitle": true,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.png"],
+    "copyright": "Faunterra",
+    "category": "Utility",
+    "shortDescription": "eBird archive builder",
+    "longDescription": "Pulls eBird observations on a daily schedule into a local, date-partitioned archive that the eBird API itself cannot serve retroactively."
+  }
+}

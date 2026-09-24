@@ -1,0 +1,577 @@
+{
+ "_note": "Captured from a real run of the pull loop against the local fixture. Used only when the Tauri bridge is absent, so the interface can be built and reviewed without compiling a WebView. Never reachable in the app.",
+ "status": {
+  "hasToken": true,
+  "tokenHint": "ends a7f2",
+  "regions": [
+   "IN-KL",
+   "IN-KA"
+  ],
+  "archiveDir": "/Volumes/LaCie/faunterra/ebird-archive",
+  "archiveExternal": true,
+  "archiveProblem": null,
+  "endpoint": "http://127.0.0.1:8788/v2",
+  "live": false,
+  "envFile": "/Volumes/LaCie/faunterra/.env.local",
+  "envFilePresent": true,
+  "daysArchived": 4,
+  "running": false
+ },
+ "summary": {
+  "regions": [
+   "IN-KA",
+   "IN-KL"
+  ],
+  "days": 4,
+  "records": 1571,
+  "species": 15,
+  "locations": 6,
+  "firstDate": "2026-09-20",
+  "lastDate": "2026-09-23",
+  "anySynthetic": true,
+  "topSpecies": [
+   {
+    "speciesCode": "rinpar",
+    "comName": "Rose-ringed Parakeet",
+    "sciName": "Psittacula krameri",
+    "records": 129,
+    "individuals": 917,
+    "daysSeen": 4
+   },
+   {
+    "speciesCode": "asipie1",
+    "comName": "Oriental Magpie-Robin",
+    "sciName": "Copsychus saularis",
+    "records": 122,
+    "individuals": 760,
+    "daysSeen": 4
+   },
+   {
+    "speciesCode": "asikoe2",
+    "comName": "Asian Koel",
+    "sciName": "Eudynamys scolopaceus",
+    "records": 117,
+    "individuals": 774,
+    "daysSeen": 4
+   },
+   {
+    "speciesCode": "blakit1",
+    "comName": "Black Kite",
+    "sciName": "Milvus migrans",
+    "records": 115,
+    "individuals": 763,
+    "daysSeen": 4
+   },
+   {
+    "speciesCode": "whtkin2",
+    "comName": "White-throated Kingfisher",
+    "sciName": "Halcyon smyrnensis",
+    "records": 109,
+    "individuals": 689,
+    "daysSeen": 4
+   },
+   {
+    "speciesCode": "rewbul",
+    "comName": "Red-vented Bulbul",
+    "sciName": "Pycnonotus cafer",
+    "records": 108,
+    "individuals": 749,
+    "daysSeen": 4
+   },
+   {
+    "speciesCode": "blwlap1",
+    "comName": "Red-wattled Lapwing",
+    "sciName": "Vanellus indicus",
+    "records": 107,
+    "individuals": 780,
+    "daysSeen": 4
+   },
+   {
+    "speciesCode": "rocpig",
+    "comName": "Rock Pigeon",
+    "sciName": "Columba livia",
+    "records": 105,
+    "individuals": 650,
+    "daysSeen": 4
+   },
+   {
+    "speciesCode": "houcro1",
+    "comName": "House Crow",
+    "sciName": "Corvus splendens",
+    "records": 101,
+    "individuals": 652,
+    "daysSeen": 4
+   },
+   {
+    "speciesCode": "indrob1",
+    "comName": "Indian Robin",
+    "sciName": "Copsychus fulicatus",
+    "records": 100,
+    "individuals": 682,
+    "daysSeen": 4
+   },
+   {
+    "speciesCode": "grehor1",
+    "comName": "Indian Grey Hornbill",
+    "sciName": "Ocyceros birostris",
+    "records": 96,
+    "individuals": 637,
+    "daysSeen": 4
+   },
+   {
+    "speciesCode": "commyn",
+    "comName": "Common Myna",
+    "sciName": "Acridotheres tristis",
+    "records": 94,
+    "individuals": 720,
+    "daysSeen": 4
+   }
+  ],
+  "byDay": [
+   {
+    "date": "2026-09-20",
+    "records": 388,
+    "species": 15
+   },
+   {
+    "date": "2026-09-21",
+    "records": 380,
+    "species": 15
+   },
+   {
+    "date": "2026-09-22",
+    "records": 402,
+    "species": 15
+   },
+   {
+    "date": "2026-09-23",
+    "records": 401,
+    "species": 15
+   }
+  ],
+  "caveat": "Descriptive counts only. eBird records confound observation effort with abundance \u2014 effort variables require the eBird Basic Dataset."
+ },
+ "events": [
+  {
+   "archive": "/tmp/claude-0/-home-user-faunterra-journal/dcba4bbd-0a38-5ef7-98e8-f99ea4c4e8d3/scratchpad/capture2",
+   "dates": [
+    "2026-09-23",
+    "2026-09-22",
+    "2026-09-21",
+    "2026-09-20"
+   ],
+   "endpoint": "http://127.0.0.1:8788/v2",
+   "kind": "plan",
+   "live": false,
+   "regions": [
+    "IN-KL",
+    "IN-KA"
+   ],
+   "requests": 8,
+   "ts": "05:28:17.340"
+  },
+  {
+   "auth": "x-ebirdapitoken: **********************a7f2",
+   "date": "2026-09-23",
+   "kind": "request",
+   "method": "GET",
+   "region": "IN-KL",
+   "ts": "05:28:17.340",
+   "url": "http://127.0.0.1:8788/v2/data/obs/IN-KL/historic/2026/9/23?detail=full&maxResults=10000&includeProvisional=true"
+  },
+  {
+   "bytes": 48488,
+   "date": "2026-09-23",
+   "kind": "response",
+   "ms": 2,
+   "region": "IN-KL",
+   "status": 200,
+   "ts": "05:28:17.343"
+  },
+  {
+   "date": "2026-09-23",
+   "kind": "parse",
+   "region": "IN-KL",
+   "rows": 149,
+   "species": 15,
+   "ts": "05:28:17.344"
+  },
+  {
+   "date": "2026-09-23",
+   "fields": [
+    "userDisplayName"
+   ],
+   "kind": "privacy",
+   "occurrences": 149,
+   "region": "IN-KL",
+   "ts": "05:28:17.344"
+  },
+  {
+   "bytes": 43201,
+   "date": "2026-09-23",
+   "kind": "write",
+   "path": "IN-KL/2026-09-23.json",
+   "region": "IN-KL",
+   "ts": "05:28:17.345"
+  },
+  {
+   "kind": "throttle",
+   "ms": 1100,
+   "ts": "05:28:17.346",
+   "why": "politeness gap between requests"
+  },
+  {
+   "auth": "x-ebirdapitoken: **********************a7f2",
+   "date": "2026-09-22",
+   "kind": "request",
+   "method": "GET",
+   "region": "IN-KL",
+   "ts": "05:28:18.446",
+   "url": "http://127.0.0.1:8788/v2/data/obs/IN-KL/historic/2026/9/22?detail=full&maxResults=10000&includeProvisional=true"
+  },
+  {
+   "bytes": 79165,
+   "date": "2026-09-22",
+   "kind": "response",
+   "ms": 2,
+   "region": "IN-KL",
+   "status": 200,
+   "ts": "05:28:18.449"
+  },
+  {
+   "date": "2026-09-22",
+   "kind": "parse",
+   "region": "IN-KL",
+   "rows": 243,
+   "species": 15,
+   "ts": "05:28:18.451"
+  },
+  {
+   "date": "2026-09-22",
+   "fields": [
+    "userDisplayName"
+   ],
+   "kind": "privacy",
+   "occurrences": 243,
+   "region": "IN-KL",
+   "ts": "05:28:18.451"
+  },
+  {
+   "bytes": 70377,
+   "date": "2026-09-22",
+   "kind": "write",
+   "path": "IN-KL/2026-09-22.json",
+   "region": "IN-KL",
+   "ts": "05:28:18.454"
+  },
+  {
+   "kind": "throttle",
+   "ms": 1100,
+   "ts": "05:28:18.454",
+   "why": "politeness gap between requests"
+  },
+  {
+   "auth": "x-ebirdapitoken: **********************a7f2",
+   "date": "2026-09-21",
+   "kind": "request",
+   "method": "GET",
+   "region": "IN-KL",
+   "ts": "05:28:19.554",
+   "url": "http://127.0.0.1:8788/v2/data/obs/IN-KL/historic/2026/9/21?detail=full&maxResults=10000&includeProvisional=true"
+  },
+  {
+   "bytes": 46242,
+   "date": "2026-09-21",
+   "kind": "response",
+   "ms": 2,
+   "region": "IN-KL",
+   "status": 200,
+   "ts": "05:28:19.557"
+  },
+  {
+   "date": "2026-09-21",
+   "kind": "parse",
+   "region": "IN-KL",
+   "rows": 142,
+   "species": 15,
+   "ts": "05:28:19.558"
+  },
+  {
+   "date": "2026-09-21",
+   "fields": [
+    "userDisplayName"
+   ],
+   "kind": "privacy",
+   "occurrences": 142,
+   "region": "IN-KL",
+   "ts": "05:28:19.558"
+  },
+  {
+   "bytes": 41190,
+   "date": "2026-09-21",
+   "kind": "write",
+   "path": "IN-KL/2026-09-21.json",
+   "region": "IN-KL",
+   "ts": "05:28:19.560"
+  },
+  {
+   "kind": "throttle",
+   "ms": 1100,
+   "ts": "05:28:19.560",
+   "why": "politeness gap between requests"
+  },
+  {
+   "auth": "x-ebirdapitoken: **********************a7f2",
+   "date": "2026-09-20",
+   "kind": "request",
+   "method": "GET",
+   "region": "IN-KL",
+   "ts": "05:28:20.661",
+   "url": "http://127.0.0.1:8788/v2/data/obs/IN-KL/historic/2026/9/20?detail=full&maxResults=10000&includeProvisional=true"
+  },
+  {
+   "bytes": 76937,
+   "date": "2026-09-20",
+   "kind": "response",
+   "ms": 3,
+   "region": "IN-KL",
+   "status": 200,
+   "ts": "05:28:20.664"
+  },
+  {
+   "date": "2026-09-20",
+   "kind": "parse",
+   "region": "IN-KL",
+   "rows": 236,
+   "species": 15,
+   "ts": "05:28:20.666"
+  },
+  {
+   "date": "2026-09-20",
+   "fields": [
+    "userDisplayName"
+   ],
+   "kind": "privacy",
+   "occurrences": 236,
+   "region": "IN-KL",
+   "ts": "05:28:20.666"
+  },
+  {
+   "bytes": 68417,
+   "date": "2026-09-20",
+   "kind": "write",
+   "path": "IN-KL/2026-09-20.json",
+   "region": "IN-KL",
+   "ts": "05:28:20.668"
+  },
+  {
+   "kind": "throttle",
+   "ms": 1100,
+   "ts": "05:28:20.668",
+   "why": "politeness gap between requests"
+  },
+  {
+   "auth": "x-ebirdapitoken: **********************a7f2",
+   "date": "2026-09-23",
+   "kind": "request",
+   "method": "GET",
+   "region": "IN-KA",
+   "ts": "05:28:21.769",
+   "url": "http://127.0.0.1:8788/v2/data/obs/IN-KA/historic/2026/9/23?detail=full&maxResults=10000&includeProvisional=true"
+  },
+  {
+   "bytes": 82383,
+   "date": "2026-09-23",
+   "kind": "response",
+   "ms": 3,
+   "region": "IN-KA",
+   "status": 200,
+   "ts": "05:28:21.773"
+  },
+  {
+   "date": "2026-09-23",
+   "kind": "parse",
+   "region": "IN-KA",
+   "rows": 252,
+   "species": 15,
+   "ts": "05:28:21.774"
+  },
+  {
+   "date": "2026-09-23",
+   "fields": [
+    "userDisplayName"
+   ],
+   "kind": "privacy",
+   "occurrences": 252,
+   "region": "IN-KA",
+   "ts": "05:28:21.774"
+  },
+  {
+   "bytes": 73258,
+   "date": "2026-09-23",
+   "kind": "write",
+   "path": "IN-KA/2026-09-23.json",
+   "region": "IN-KA",
+   "ts": "05:28:21.777"
+  },
+  {
+   "kind": "throttle",
+   "ms": 1100,
+   "ts": "05:28:21.777",
+   "why": "politeness gap between requests"
+  },
+  {
+   "auth": "x-ebirdapitoken: **********************a7f2",
+   "date": "2026-09-22",
+   "kind": "request",
+   "method": "GET",
+   "region": "IN-KA",
+   "ts": "05:28:22.879",
+   "url": "http://127.0.0.1:8788/v2/data/obs/IN-KA/historic/2026/9/22?detail=full&maxResults=10000&includeProvisional=true"
+  },
+  {
+   "bytes": 51959,
+   "date": "2026-09-22",
+   "kind": "response",
+   "ms": 2,
+   "region": "IN-KA",
+   "status": 200,
+   "ts": "05:28:22.882"
+  },
+  {
+   "date": "2026-09-22",
+   "kind": "parse",
+   "region": "IN-KA",
+   "rows": 159,
+   "species": 15,
+   "ts": "05:28:22.883"
+  },
+  {
+   "date": "2026-09-22",
+   "fields": [
+    "userDisplayName"
+   ],
+   "kind": "privacy",
+   "occurrences": 159,
+   "region": "IN-KA",
+   "ts": "05:28:22.884"
+  },
+  {
+   "bytes": 46294,
+   "date": "2026-09-22",
+   "kind": "write",
+   "path": "IN-KA/2026-09-22.json",
+   "region": "IN-KA",
+   "ts": "05:28:22.885"
+  },
+  {
+   "kind": "throttle",
+   "ms": 1100,
+   "ts": "05:28:22.885",
+   "why": "politeness gap between requests"
+  },
+  {
+   "auth": "x-ebirdapitoken: **********************a7f2",
+   "date": "2026-09-21",
+   "kind": "request",
+   "method": "GET",
+   "region": "IN-KA",
+   "ts": "05:28:23.987",
+   "url": "http://127.0.0.1:8788/v2/data/obs/IN-KA/historic/2026/9/21?detail=full&maxResults=10000&includeProvisional=true"
+  },
+  {
+   "bytes": 77654,
+   "date": "2026-09-21",
+   "kind": "response",
+   "ms": 3,
+   "region": "IN-KA",
+   "status": 200,
+   "ts": "05:28:23.990"
+  },
+  {
+   "date": "2026-09-21",
+   "kind": "parse",
+   "region": "IN-KA",
+   "rows": 238,
+   "species": 15,
+   "ts": "05:28:23.992"
+  },
+  {
+   "date": "2026-09-21",
+   "fields": [
+    "userDisplayName"
+   ],
+   "kind": "privacy",
+   "occurrences": 238,
+   "region": "IN-KA",
+   "ts": "05:28:23.993"
+  },
+  {
+   "bytes": 69053,
+   "date": "2026-09-21",
+   "kind": "write",
+   "path": "IN-KA/2026-09-21.json",
+   "region": "IN-KA",
+   "ts": "05:28:23.995"
+  },
+  {
+   "kind": "throttle",
+   "ms": 1100,
+   "ts": "05:28:23.995",
+   "why": "politeness gap between requests"
+  },
+  {
+   "auth": "x-ebirdapitoken: **********************a7f2",
+   "date": "2026-09-20",
+   "kind": "request",
+   "method": "GET",
+   "region": "IN-KA",
+   "ts": "05:28:25.097",
+   "url": "http://127.0.0.1:8788/v2/data/obs/IN-KA/historic/2026/9/20?detail=full&maxResults=10000&includeProvisional=true"
+  },
+  {
+   "bytes": 49554,
+   "date": "2026-09-20",
+   "kind": "response",
+   "ms": 3,
+   "region": "IN-KA",
+   "status": 200,
+   "ts": "05:28:25.100"
+  },
+  {
+   "date": "2026-09-20",
+   "kind": "parse",
+   "region": "IN-KA",
+   "rows": 152,
+   "species": 15,
+   "ts": "05:28:25.102"
+  },
+  {
+   "date": "2026-09-20",
+   "fields": [
+    "userDisplayName"
+   ],
+   "kind": "privacy",
+   "occurrences": 152,
+   "region": "IN-KA",
+   "ts": "05:28:25.102"
+  },
+  {
+   "bytes": 44157,
+   "date": "2026-09-20",
+   "kind": "write",
+   "path": "IN-KA/2026-09-20.json",
+   "region": "IN-KA",
+   "ts": "05:28:25.104"
+  },
+  {
+   "failed": 0,
+   "fetched": 8,
+   "kind": "done",
+   "ms": 7763,
+   "rows": 1571,
+   "skipped": 0,
+   "ts": "05:28:25.104"
+  }
+ ]
+}
