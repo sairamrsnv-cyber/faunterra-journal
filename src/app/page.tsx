@@ -21,7 +21,12 @@ const CATEGORIES = [
 ];
 
 export default function JournalPage() {
-  const { featured, secondary, curated, roundup, birdSignals } = getJournalData();
+  const { featured, secondary, curated, roundup, birdSignals, stats, presentCategories } = getJournalData();
+
+  // Only offer filters that lead somewhere. With fewer than two categories
+  // in the data there is nothing to filter between, so the bar is hidden
+  // rather than shown as a row of pills that all do the same thing.
+  const pills = CATEGORIES.filter(c => c.key === 'all' || presentCategories.includes(c.key));
 
   return (
     <main className="min-h-screen bg-ivory">
@@ -55,30 +60,40 @@ export default function JournalPage() {
         <p className="font-display italic font-light text-moss/65 text-lg md:text-xl max-w-xl mx-auto leading-relaxed mb-12">
           Field observations, conservation milestones, restoration journeys, and inspiring stories from the natural world.
         </p>
-        <div className="flex flex-wrap gap-6 justify-center text-center">
-          {[
-            { n: '48', l: 'Published Essays' },
-            { n: '22', l: 'Contributors' },
-            { n: '6',  l: 'Categories' },
-            { n: '∞',  l: 'Conservation Wins' },
-          ].map(({ n, l }) => (
-            <div key={l}>
-              <div className="font-display font-light text-forest-deep text-3xl mb-1">{n}</div>
-              <div className="font-ui text-[0.6rem] font-600 tracking-[0.15em] uppercase text-moss">{l}</div>
-            </div>
-          ))}
-        </div>
+        {/* Counted, not asserted. A figure that is zero is left out rather
+            than printed — "0 Published Essays" in a hero is worse than no
+            figure at all, and a fabricated one is worse than both. The
+            Contributors tile is gone: there is no author field in the schema,
+            so there is nothing to count. */}
+        {(stats.essays > 0 || stats.wins > 0) && (
+          <div className="flex flex-wrap gap-6 justify-center text-center">
+            {[
+              { n: stats.essays,     l: stats.essays === 1 ? 'Published Essay' : 'Published Essays' },
+              { n: stats.categories, l: stats.categories === 1 ? 'Category' : 'Categories' },
+              { n: stats.wins,       l: stats.wins === 1 ? 'Conservation Win' : 'Conservation Wins' },
+            ]
+              .filter(({ n }) => n > 0)
+              .map(({ n, l }) => (
+                <div key={l}>
+                  <div className="font-display font-light text-forest-deep text-3xl mb-1">{n}</div>
+                  <div className="font-ui text-[0.6rem] font-600 tracking-[0.15em] uppercase text-moss">{l}</div>
+                </div>
+              ))}
+          </div>
+        )}
       </section>
 
       {/* ── CATEGORY FILTER ───────────────────────────────────── */}
-      <div className="sticky top-[70px] z-40 bg-[#EDE8DC] border-b border-[rgba(107,112,92,0.1)] px-6 md:px-12 py-4 flex gap-3 flex-wrap items-center overflow-x-auto">
-        <span className="font-ui text-[0.57rem] font-600 tracking-[0.3em] uppercase text-moss mr-2">Filter</span>
-        {CATEGORIES.map(({ key, label }) => (
-          <span key={key} className={`cat-pill ${key === 'all' ? 'active' : ''}`} data-filter={key}>
-            {label}
-          </span>
-        ))}
-      </div>
+      {presentCategories.length > 1 && (
+        <div className="sticky top-[70px] z-40 bg-[#EDE8DC] border-b border-[rgba(107,112,92,0.1)] px-6 md:px-12 py-4 flex gap-3 flex-wrap items-center overflow-x-auto">
+          <span className="font-ui text-[0.57rem] font-600 tracking-[0.3em] uppercase text-moss mr-2">Filter</span>
+          {pills.map(({ key, label }) => (
+            <span key={key} className={`cat-pill ${key === 'all' ? 'active' : ''}`} data-filter={key}>
+              {label}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* ── SECTION 1 — FAUNTERRA FIELD JOURNAL ──────────────── */}
       <section className="py-20 px-6 md:px-12 lg:px-20 bg-ivory">
@@ -107,6 +122,23 @@ export default function JournalPage() {
               <ArticleCard key={article.id} article={article} />
             ))}
           </div>
+
+          {/* Section 02 has an empty state; this one did not, so removing the
+              articles left a heading above blank space. The journal is open for
+              submissions, so the honest empty state is an invitation. */}
+          {!featured && secondary.length === 0 && (
+            <div className="py-20 text-center">
+              <p className="font-display italic text-moss/50 text-xl mb-8">
+                No field essays published yet.
+              </p>
+              <a
+                href="#contribute"
+                className="font-ui text-[0.65rem] font-600 tracking-[0.2em] uppercase px-8 py-3.5 bg-forest text-ivory hover:bg-[#1C2B1E] transition-colors inline-block"
+              >
+                Write the first one
+              </a>
+            </div>
+          )}
 
         </div>
       </section>
@@ -317,6 +349,12 @@ export default function JournalPage() {
       </footer>
 
       {/* ── CLIENT-SIDE FILTER SCRIPT ─────────────────────────── */}
+      {/* Careful with quotes in here. This is a template literal, so `\'`
+          collapses to a bare `'` before the browser ever sees it — an
+          apostrophe inside a single-quoted JS string below then throws a
+          syntax error that kills this ENTIRE block: the filter, the reveal
+          animations and the form handler, all silently. Use HTML entities
+          (&rsquo;) rather than escapes. */}
       <script dangerouslySetInnerHTML={{ __html: `
         // Category filter
         document.querySelectorAll('.cat-pill').forEach(pill => {
@@ -348,7 +386,7 @@ export default function JournalPage() {
               else f.style.borderColor='';
             });
             if (ok) {
-              form.innerHTML = '<div style="padding:32px;text-align:center;font-family:Syne,sans-serif;font-size:.85rem;color:#C9A97A;letter-spacing:.1em;">SUBMISSION RECEIVED — We\'ll respond within 48 hours. <br><br><a href="mailto:journal@faunterra.com" style="color:#A68A64">journal@faunterra.com</a></div>';
+              form.innerHTML = '<div style="padding:32px;text-align:center;font-family:Syne,sans-serif;font-size:.85rem;color:#C9A97A;letter-spacing:.1em;">SUBMISSION RECEIVED — We&rsquo;ll respond within 48 hours. <br><br><a href="mailto:journal@faunterra.com" style="color:#A68A64">journal@faunterra.com</a></div>';
             }
           });
         }

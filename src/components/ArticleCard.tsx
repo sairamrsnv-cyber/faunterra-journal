@@ -20,7 +20,12 @@ export function ArticleCard({ article }: { article: Article }) {
   const isF = article.type === 'faunterra';
 
   return (
-    <article className="article-card bg-white border border-[rgba(107,112,92,0.1)] cursor-pointer group overflow-hidden">
+    // data-cat is what the category filter selects on. Without it the filter
+    // matches nothing and every pill is inert — which is what it did.
+    <article
+      data-cat={article.category}
+      className="article-card bg-white border border-[rgba(107,112,92,0.1)] cursor-pointer group overflow-hidden"
+    >
       {/* Image / placeholder */}
       <div className="relative h-52 overflow-hidden bg-card-dark">
         {article.image && (
@@ -84,7 +89,10 @@ export function ArticleCard({ article }: { article: Article }) {
 // ── Featured large card ───────────────────────────────────────
 export function FeaturedCard({ article }: { article: Article }) {
   return (
-    <article className="article-card grid md:grid-cols-2 gap-0 bg-white border border-[rgba(107,112,92,0.1)] cursor-pointer group overflow-hidden">
+    <article
+      data-cat={article.category}
+      className="article-card grid md:grid-cols-2 gap-0 bg-white border border-[rgba(107,112,92,0.1)] cursor-pointer group overflow-hidden"
+    >
       {/* Image */}
       <div className="relative min-h-72 md:min-h-full overflow-hidden bg-card-dark">
         {article.image && (

@@ -59,7 +59,31 @@ export function getJournalData() {
   const featured     = faunterra.find(a => a.featured) ?? faunterra[0] ?? null;
   const secondary    = faunterra.filter(a => a !== featured).slice(0, 12);
 
-  return { featured, secondary, faunterra, curated, roundup, birdSignals };
+  // Headline figures, counted rather than asserted.
+  //
+  // These used to be hardcoded in the page: "48 Published Essays" above six
+  // articles, "22 Contributors" with no author field anywhere in the schema.
+  // A number in a hero is a claim, and a claim about our own publication
+  // record is not covered by any disclaimer about third-party data. Counting
+  // them means they are right now and stay right later.
+  // The categories we actually have something to show for. A filter offering
+  // ten options when four have articles is a promise of nine empty grids.
+  // Array.from rather than a spread: tsconfig targets ES5 here, where
+  // spreading a Set needs downlevelIteration.
+  const presentCategories = Array.from(
+    new Set([...faunterra, ...curated].map(a => a.category as string)),
+  );
+
+  const stats = {
+    essays:     faunterra.length,
+    wins:       curated.length,
+    categories: presentCategories.length,
+  };
+
+  return {
+    featured, secondary, faunterra, curated, roundup, birdSignals,
+    stats, presentCategories,
+  };
 }
 
 // ── eBird field signals ───────────────────────────────────────
