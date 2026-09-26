@@ -257,10 +257,7 @@ fn main() -> ExitCode {
             .unwrap_or_else(|| PathBuf::from("pull"))
     });
 
-    let working_dir = std::env::var("FAUNTERRA_ROOT")
-        .map(PathBuf::from)
-        .or_else(|_| std::env::current_dir())
-        .unwrap_or_else(|_| PathBuf::from("."));
+    let working_dir = ebird_core::resolve_root();
 
     let logs = working_dir.join("logs");
     let cfg = Config {

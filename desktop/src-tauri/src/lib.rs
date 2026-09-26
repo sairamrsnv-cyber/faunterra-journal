@@ -214,18 +214,10 @@ fn reveal_archive(paths: State<'_, Paths>) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            // Prefer the repository beside the binary in development; fall back
-            // to the user's home in a bundled app, where there is no repo.
-            let root = std::env::var("FAUNTERRA_ROOT")
-                .map(PathBuf::from)
-                .ok()
-                .or_else(|| {
-                    std::env::current_dir()
-                        .ok()
-                        .filter(|d| d.join(".env.local").is_file())
-                })
-                .or_else(|| app.path().home_dir().ok().map(|h| h.join(".faunterra")))
-                .unwrap_or_else(|| PathBuf::from("."));
+            // One resolver, shared with every command-line tool, so the key
+            // goes in one place and the scheduled job and the window agree
+            // about where that is.
+            let root = ebird_core::resolve_root();
 
             std::fs::create_dir_all(&root).ok();
             ebird_core::load_env_file(&root.join(".env.local"));

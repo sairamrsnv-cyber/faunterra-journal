@@ -235,7 +235,19 @@ Separate from the website pipeline. This builds a **local** eBird dataset for
 your own analysis — it never touches `data/` and nothing here is published.
 
 Everything below lives in `desktop/` and is also available as a desktop
-application — see `desktop/README.md`. A Rust toolchain is required
+application. On a Mac, one command sets all of it up:
+
+```bash
+./desktop/install.sh
+```
+
+It checks the toolchains, takes the API key without echoing it, builds
+everything, offers to install the app and schedule the daily pull, and opens
+it. The three steps that change your machine — installing Rust, writing to
+/Applications, scheduling a background job — each ask first.
+
+The key and the archive live in `~/.faunterra`, not in this checkout, so
+pulling new code never touches your data. A Rust toolchain is required
 ([rustup.rs](https://rustup.rs)); the `npm run ebird:*` scripts are thin
 wrappers so the commands read the same from the repo root.
 

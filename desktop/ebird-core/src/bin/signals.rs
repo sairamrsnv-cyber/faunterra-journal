@@ -43,10 +43,7 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    let root = std::env::var("FAUNTERRA_ROOT")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-    ebird_core::load_env_file(&root.join(".env.local"));
+    let root = ebird_core::init();
 
     println!("\n  eBird field signals");
 

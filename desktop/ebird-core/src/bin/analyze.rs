@@ -36,10 +36,7 @@ fn thousands(n: usize) -> String {
 }
 
 fn main() -> ExitCode {
-    let root = std::env::var("FAUNTERRA_ROOT")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-    ebird_core::load_env_file(&root.join(".env.local"));
+    let root = ebird_core::init();
 
     let location = match archive::resolve(
         std::env::var("EBIRD_ARCHIVE_DIR").ok().as_deref(),

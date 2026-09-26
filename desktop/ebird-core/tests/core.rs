@@ -403,3 +403,67 @@ fn summary_of_an_empty_archive_reports_absence_not_zero() {
     assert!(s.top_species.is_empty());
     assert!(!s.any_synthetic);
 }
+
+// ── root resolution ───────────────────────────────────────
+// Five programs read this, including the one launchd runs unattended. If they
+// disagree about where .env.local lives, the scheduled job reads no key and
+// archives nothing while reporting a clean run.
+
+#[test]
+fn an_explicit_root_wins_over_everything() {
+    let explicit = tmpdir("explicit");
+    let cwd = tmpdir("cwd");
+    fs::write(cwd.join(".env.local"), "EBIRD_API_TOKEN=x").unwrap();
+    let home = tmpdir("home");
+
+    let got = ebird_core::resolve_root_from(Some(explicit.clone()), Some(cwd), Some(home));
+    assert_eq!(got, explicit);
+}
+
+#[test]
+fn an_empty_explicit_root_is_ignored() {
+    // An unset variable often arrives as an empty string rather than absent,
+    // and resolving to "" would put the archive at the filesystem root.
+    let home = tmpdir("home-empty");
+    let got = ebird_core::resolve_root_from(Some(PathBuf::new()), None, Some(home.clone()));
+    assert_eq!(got, home.join(".faunterra"));
+}
+
+#[test]
+fn the_working_directory_wins_only_when_it_holds_the_env_file() {
+    let home = tmpdir("home2");
+
+    let with_env = tmpdir("with-env");
+    fs::write(with_env.join(".env.local"), "EBIRD_API_TOKEN=x").unwrap();
+    assert_eq!(
+        ebird_core::resolve_root_from(None, Some(with_env.clone()), Some(home.clone())),
+        with_env,
+        "a checkout, or launchd's WorkingDirectory"
+    );
+
+    let without = tmpdir("without-env");
+    assert_eq!(
+        ebird_core::resolve_root_from(None, Some(without), Some(home.clone())),
+        home.join(".faunterra"),
+        "a bare directory must not capture the root just by being current"
+    );
+}
+
+#[test]
+fn a_directory_named_env_local_does_not_count_as_the_file() {
+    let home = tmpdir("home3");
+    let cwd = tmpdir("dir-not-file");
+    fs::create_dir_all(cwd.join(".env.local")).unwrap();
+    assert_eq!(
+        ebird_core::resolve_root_from(None, Some(cwd), Some(home.clone())),
+        home.join(".faunterra")
+    );
+}
+
+#[test]
+fn with_no_home_we_fall_back_rather_than_panic() {
+    assert_eq!(
+        ebird_core::resolve_root_from(None, None, None),
+        PathBuf::from(".")
+    );
+}

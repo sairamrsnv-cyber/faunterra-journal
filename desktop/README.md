@@ -43,13 +43,50 @@ The split is load-bearing, not tidiness. `ebird-core` can be verified on a
 machine with no display, which means a GUI failure can never be mistaken for a
 data failure — and the data path is the part that must not be wrong.
 
-## Running it
+## Installing it (macOS)
+
+```bash
+./desktop/install.sh
+```
+
+Checks the toolchains, takes the API key without echoing it, builds the tools
+and the app, offers to copy it to /Applications and to schedule the daily
+pull, then opens it. Three things change your machine beyond this directory —
+installing Rust, writing to /Applications, and scheduling a background job —
+and each one asks first. `--yes` accepts all three.
+
+It refuses on anything but macOS rather than half-working: the `.app` bundle
+and the launchd agent are macOS-specific, though the tools build anywhere.
+
+## Running it from source
 
 ```bash
 npm install                 # @tauri-apps/cli only
 npm run dev                 # the window, with hot reload
-npm run build               # a signed-able .app + .dmg in src-tauri/target/release/bundle
+npm run build               # a signed-able .app + .dmg in target/release/bundle
 ```
+
+## Where the key and the archive live
+
+```
+~/.faunterra/.env.local        the API key (chmod 600)
+~/.faunterra/ebird-archive/    the archive, unless EBIRD_ARCHIVE_DIR says otherwise
+~/.faunterra/logs/             what the scheduled job wrote
+```
+
+Every tool and the app resolve this identically, in this order:
+
+1. `FAUNTERRA_ROOT`, if set.
+2. the current directory, when it holds a `.env.local` — a checkout you are
+   working in, and launchd's WorkingDirectory.
+3. `~/.faunterra`.
+
+That agreement is load-bearing. These programs each decided it differently
+once, and one of them used `env!("CARGO_MANIFEST_DIR")` — a path fixed when
+the binary was compiled. It works until the binary is copied or the checkout
+moves, and then the scheduled job reads no key and archives nothing while
+reporting a clean run. Keeping data outside the checkout also means pulling
+new code never touches it.
 
 Headless, no window needed. Each is a separate binary:
 

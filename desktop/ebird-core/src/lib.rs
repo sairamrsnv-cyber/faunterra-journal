@@ -59,3 +59,56 @@ pub fn load_env_file(path: &std::path::Path) -> Vec<String> {
     }
     loaded
 }
+
+/// Where configuration and data live, decided the same way by every binary
+/// and by the app.
+///
+/// WHY THIS IS SHARED
+/// These five programs each resolved this differently once, and one of them
+/// used `env!("CARGO_MANIFEST_DIR")` — a path baked in when the binary was
+/// compiled. That works exactly until the binary is copied somewhere, or the
+/// checkout moves, and then the scheduled job quietly reads no key and
+/// archives nothing while reporting success. Agreement here is not tidiness;
+/// it is the difference between one place to put the key and five.
+///
+/// Precedence:
+///   1. `FAUNTERRA_ROOT` — explicit wins, always.
+///   2. the current directory, if it holds a `.env.local` — this covers
+///      working in a checkout, and launchd's WorkingDirectory.
+///   3. `~/.faunterra` — the installed app, which has no useful cwd.
+pub fn resolve_root() -> std::path::PathBuf {
+    resolve_root_from(
+        std::env::var_os("FAUNTERRA_ROOT").map(std::path::PathBuf::from),
+        std::env::current_dir().ok(),
+        home_dir(),
+    )
+}
+
+/// The decision itself, with its inputs handed in so it can be tested.
+pub fn resolve_root_from(
+    explicit: Option<std::path::PathBuf>,
+    cwd: Option<std::path::PathBuf>,
+    home: Option<std::path::PathBuf>,
+) -> std::path::PathBuf {
+    if let Some(dir) = explicit.filter(|d| !d.as_os_str().is_empty()) {
+        return dir;
+    }
+    if let Some(dir) = cwd.filter(|d| d.join(".env.local").is_file()) {
+        return dir;
+    }
+    home.map(|h| h.join(".faunterra"))
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+}
+
+fn home_dir() -> Option<std::path::PathBuf> {
+    std::env::var_os("HOME")
+        .filter(|h| !h.is_empty())
+        .map(std::path::PathBuf::from)
+}
+
+/// Resolve the root and load its `.env.local`. What every binary calls first.
+pub fn init() -> std::path::PathBuf {
+    let root = resolve_root();
+    load_env_file(&root.join(".env.local"));
+    root
+}

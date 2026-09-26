@@ -10,7 +10,6 @@
 //!   pull --probe          one request; report what actually came back
 //!   pull --json           emit raw events, one JSON object per line
 
-use std::path::PathBuf;
 use std::process::ExitCode;
 
 use ebird_core::analyze;
@@ -163,12 +162,7 @@ fn print_event(ev: &PullEvent) {
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(|p| p.parent())
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
-
+    let repo_root = ebird_core::resolve_root();
     let loaded = ebird_core::load_env_file(&repo_root.join(".env.local"));
 
     let json_mode = arg_flag("--json");
